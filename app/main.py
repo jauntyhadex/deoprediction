@@ -3,10 +3,10 @@ from fastapi import FastAPI
 from app.config.settings import settings
 from app.database.connection import engine
 from app.database.base import Base
-from app.models import Competition, Player, Team
+from app.models import Competition, Fixture, Player, Team
 
 # Create all database tables
-Base.metadata.create_all(bind=engine)
+# Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title=settings.app_name,
