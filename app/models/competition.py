@@ -12,11 +12,42 @@ class Competition(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
 
-    name: Mapped[str] = mapped_column(String(100), nullable=False)
 
-    country: Mapped[str] = mapped_column(String(100), nullable=False)
+    external_id: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+    )
 
-    season: Mapped[str] = mapped_column(String(20), nullable=False)
+    code: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+    )
+
+    # Competition details
+    name: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False,
+    )
+
+    country: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False,
+    )
+
+    type: Mapped[str] = mapped_column(
+        String(30),
+        nullable=False,
+    )
+
+    emblem: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+
+    season: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+    )
 
     sport: Mapped[Sport] = mapped_column(
         Enum(Sport),

@@ -11,23 +11,71 @@ class Team(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
 
-    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    # Football-data.org ID
+    external_id: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+    )
 
-    short_name: Mapped[str] = mapped_column(String(20), nullable=False)
+    name: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False,
+    )
 
-    logo: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    short_name: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+    )
+
+    tla: Mapped[str | None] = mapped_column(
+        String(10),
+        nullable=True,
+    )
+
+    country: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False,
+    )
+
+    founded: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+    )
+
+    venue: Mapped[str | None] = mapped_column(
+        String(150),
+        nullable=True,
+    )
+
+    website: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+
+    club_colors: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+    )
+
+    logo: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
 
     competition_id: Mapped[int] = mapped_column(
         ForeignKey("competitions.id"),
         nullable=False,
     )
 
-    competition = relationship("Competition", back_populates="teams")
+    competition = relationship(
+        "Competition",
+        back_populates="teams",
+    )
 
     players = relationship(
-    "Player",
-    back_populates="team",
-)
+        "Player",
+        back_populates="team",
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
