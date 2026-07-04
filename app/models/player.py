@@ -10,6 +10,11 @@ class Player(Base):
     __tablename__ = "players"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    
+    external_id: Mapped[int] = mapped_column(
+    Integer,
+    nullable=False,
+)
 
     name: Mapped[str] = mapped_column(String(100), nullable=False)
 

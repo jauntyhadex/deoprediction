@@ -17,9 +17,9 @@ def main():
     for competition in competitions:
         print(f"\nImporting teams for {competition.name}...")
 
+    
         try:
-            response = provider.get_teams(competition.code)
-            teams = response.get("teams", [])
+            teams = provider.get_teams(competition.code)
 
         except Exception as e:
             print(f"Failed to fetch teams for {competition.code}: {e}")
@@ -50,7 +50,7 @@ def main():
             print(f"Imported {team['name']}")
 
         # IMPORTANT: avoid 429 rate limit
-        time.sleep(2)
+        time.sleep(5)
 
     db.close()
 

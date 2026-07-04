@@ -16,7 +16,9 @@ class FootballAPIClient:
             headers=self.headers,
             timeout=30,
         )
+
         response.raise_for_status()
+
         return response.json()
 
     def get_teams(self, competition_code: str):
@@ -25,7 +27,9 @@ class FootballAPIClient:
             headers=self.headers,
             timeout=30,
         )
+
         response.raise_for_status()
+
         return response.json()
 
     def get_matches(self, competition_code: str):
@@ -34,5 +38,26 @@ class FootballAPIClient:
             headers=self.headers,
             timeout=30,
         )
+
         response.raise_for_status()
+
         return response.json()
+
+    def get_players(self, team_id: int):
+        response = httpx.get(
+            f"{self.base_url}/teams/{team_id}",
+            headers=self.headers,
+            timeout=30,
+        )
+
+        response.raise_for_status()
+
+        return response.json()
+
+
+if __name__ == "__main__":
+    client = FootballAPIClient()
+
+    data = client.get_competitions()
+
+    print(f"Found {data['count']} competitions")
