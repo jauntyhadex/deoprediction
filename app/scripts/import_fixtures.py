@@ -1,8 +1,9 @@
+import time
+
 from app.database.connection import SessionLocal
+from app.models.competition import Competition
 from app.providers.football.fixture_provider import FixtureProvider
 from app.services.fixture_service import FixtureService
-from app.models.competition import Competition
-from app.models.team import Team
 
 
 def main():
@@ -13,21 +14,25 @@ def main():
 
     competitions = db.query(Competition).all()
 
-    import time
+    for competition in competitions:
+        print(f"\nImporting fixtures for {competition.name}...")
 
-for competition in competitions:
-    print(f"\nImporting fixtures for {competition.name}...")
+        try:
+            matches = provider.get_matches(competition.code)
 
-    try:
-        matches = provider.get_matches(competition.code)
-    except Exception as e:
-        print(f"Skipping {competition.code} due to API limit: {e}")
-        time.sleep(10)  # wait before continuing
-        continue
+            print(f"Found {len(matches)} matches")
 
-    print(f"Found {len(matches)} matches")
+            # We will save fixtures into the database in the next step.
 
-    time.sleep(6) 
+            time.sleep(6)
+
+        except Exception as e:
+            print(f"Skipping {competition.code} due to API limit: {e}")
+            time.sleep(10)
+            continue
+
+    db.close()
+
 
 if __name__ == "__main__":
     main()
