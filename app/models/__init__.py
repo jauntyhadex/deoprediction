@@ -9,6 +9,8 @@ from .team_home_away_stats import TeamHomeAwayStats
 from .head_to_head import HeadToHead
 from .team_rating import TeamRating
 from .elo_rating import EloRating
+from .strength_of_schedule import StrengthOfSchedule
+from .team_power_rating import TeamPowerRating
 
 
 __all__ = [
