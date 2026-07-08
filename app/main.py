@@ -1,24 +1,31 @@
 from fastapi import FastAPI
 
-from app.config.settings import settings
-from app.database.connection import engine
-from app.database.base import Base
-from app.models import Competition, Fixture, Player, Team
-
-# Create all database tables
-# Base.metadata.create_all(bind=engine)
-
-app = FastAPI(
-    title=settings.app_name,
-    version=settings.app_version,
-    description="AI-assisted sports analysis platform.",
+from app.database import model_loader
+from app.api.routes.prediction_picks import (
+    router as prediction_picks_router,
 )
 
 
+app = FastAPI(
+    title="DeoPrediction API",
+    description="Football and basketball prediction API",
+    version="1.0.0",
+)
+
+
+app.include_router(prediction_picks_router)
+
+
 @app.get("/")
-def home() -> dict[str, str]:
+def root():
     return {
-        "message": f"Welcome to {settings.app_name}!",
-        "environment": settings.environment,
-        "status": "running",
+        "message": "DeoPrediction API is running",
+        "docs": "/docs",
+    }
+
+
+@app.get("/health")
+def health():
+    return {
+        "status": "healthy",
     }

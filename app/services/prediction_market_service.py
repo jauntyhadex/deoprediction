@@ -1,5 +1,7 @@
 from app.models.prediction_market import PredictionMarket
-from app.prediction.confidence import ConfidenceCalculator
+from app.prediction.confidence import (
+    ConfidenceCalculator,
+)
 
 
 class PredictionMarketService:
@@ -8,7 +10,28 @@ class PredictionMarketService:
         self.db = db
 
     @staticmethod
-    def fair_odds(probability: float) -> float:
+    def normalize_probability(
+        probability: float,
+    ) -> float:
+        return round(
+            max(
+                0.0,
+                min(float(probability), 100.0),
+            ),
+            2,
+        )
+
+    @staticmethod
+    def fair_odds(
+        probability: float,
+    ) -> float:
+
+        probability = (
+            PredictionMarketService
+            .normalize_probability(
+                probability
+            )
+        )
 
         if probability <= 0:
             return 0.0
@@ -20,11 +43,13 @@ class PredictionMarketService:
 
     def create(self, **kwargs):
 
-        probability = float(
+        probability = self.normalize_probability(
             kwargs["probability"]
         )
 
         market_type = kwargs["market_type"]
+
+        kwargs["probability"] = probability
 
         kwargs["fair_odds"] = self.fair_odds(
             probability

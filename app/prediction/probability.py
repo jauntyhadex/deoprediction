@@ -6,9 +6,16 @@ from app.prediction.poisson import PoissonPredictor
 class ProbabilityPredictor:
 
     @staticmethod
-    def _percentage(value: float) -> float:
-        value = max(0.0, min(value, 1.0))
+    def _to_percent(value: float) -> float:
+        value = max(0.0, min(float(value), 1.0))
         return round(value * 100, 2)
+
+    @staticmethod
+    def _clamp_percent(value: float) -> float:
+        return round(
+            max(0.0, min(float(value), 100.0)),
+            2,
+        )
 
     @staticmethod
     def match_probabilities(
@@ -26,24 +33,33 @@ class ProbabilityPredictor:
 
         for home_goals, row in enumerate(matrix):
             for away_goals, probability in enumerate(row):
+
                 if home_goals > away_goals:
                     home += probability
+
                 elif home_goals == away_goals:
                     draw += probability
+
                 else:
                     away += probability
 
         total = home + draw + away
 
-        if total > 0:
-            home /= total
-            draw /= total
-            away /= total
+        if total <= 0:
+            return {
+                "home": 33.33,
+                "draw": 33.34,
+                "away": 33.33,
+            }
+
+        home /= total
+        draw /= total
+        away /= total
 
         return {
-            "home": ProbabilityPredictor._percentage(home),
-            "draw": ProbabilityPredictor._percentage(draw),
-            "away": ProbabilityPredictor._percentage(away),
+            "home": ProbabilityPredictor._to_percent(home),
+            "draw": ProbabilityPredictor._to_percent(draw),
+            "away": ProbabilityPredictor._to_percent(away),
         }
 
     @staticmethod
@@ -55,10 +71,14 @@ class ProbabilityPredictor:
             1
             - math.exp(-home_expected)
             - math.exp(-away_expected)
-            + math.exp(-(home_expected + away_expected))
+            + math.exp(
+                -(home_expected + away_expected)
+            )
         )
 
-        return ProbabilityPredictor._percentage(probability)
+        return ProbabilityPredictor._to_percent(
+            probability
+        )
 
     @staticmethod
     def over_under(
@@ -76,6 +96,7 @@ class ProbabilityPredictor:
 
         for home_goals, row in enumerate(matrix):
             for away_goals, probability in enumerate(row):
+
                 total_goals = home_goals + away_goals
 
                 if total_goals > line:
@@ -85,13 +106,20 @@ class ProbabilityPredictor:
 
         total = over + under
 
-        if total > 0:
-            over /= total
-            under /= total
+        if total <= 0:
+            return {
+                "over": 50.0,
+                "under": 50.0,
+            }
+
+        over /= total
+        under /= total
 
         return {
-            "over": ProbabilityPredictor._percentage(over),
-            "under": ProbabilityPredictor._percentage(under),
+            "over": ProbabilityPredictor._to_percent(over),
+            "under": ProbabilityPredictor._to_percent(
+                under
+            ),
         }
 
     @staticmethod
@@ -99,23 +127,32 @@ class ProbabilityPredictor:
         home_expected: float,
         away_expected: float,
     ) -> dict:
-        probabilities = ProbabilityPredictor.match_probabilities(
-            home_expected,
-            away_expected,
+        probabilities = (
+            ProbabilityPredictor.match_probabilities(
+                home_expected,
+                away_expected,
+            )
         )
 
+        home = probabilities["home"]
+        draw = probabilities["draw"]
+        away = probabilities["away"]
+
         return {
-            "home_or_draw": round(
-                probabilities["home"] + probabilities["draw"],
-                2,
+            "home_or_draw": (
+                ProbabilityPredictor._clamp_percent(
+                    100 - away
+                )
             ),
-            "home_or_away": round(
-                probabilities["home"] + probabilities["away"],
-                2,
+            "home_or_away": (
+                ProbabilityPredictor._clamp_percent(
+                    100 - draw
+                )
             ),
-            "draw_or_away": round(
-                probabilities["draw"] + probabilities["away"],
-                2,
+            "draw_or_away": (
+                ProbabilityPredictor._clamp_percent(
+                    100 - home
+                )
             ),
         }
 
@@ -124,13 +161,16 @@ class ProbabilityPredictor:
         home_expected: float,
         away_expected: float,
     ) -> dict:
-        probabilities = ProbabilityPredictor.match_probabilities(
-            home_expected,
-            away_expected,
+        probabilities = (
+            ProbabilityPredictor.match_probabilities(
+                home_expected,
+                away_expected,
+            )
         )
 
         home = probabilities["home"]
         away = probabilities["away"]
+
         total = home + away
 
         if total <= 0:
@@ -140,8 +180,16 @@ class ProbabilityPredictor:
             }
 
         return {
-            "home": round((home / total) * 100, 2),
-            "away": round((away / total) * 100, 2),
+            "home": (
+                ProbabilityPredictor._clamp_percent(
+                    (home / total) * 100
+                )
+            ),
+            "away": (
+                ProbabilityPredictor._clamp_percent(
+                    (away / total) * 100
+                )
+            ),
         }
 
     @staticmethod
@@ -149,21 +197,27 @@ class ProbabilityPredictor:
         expected_goals: float,
         line: float,
     ) -> dict:
-        maximum_under_goals = int(math.floor(line))
+        maximum_under_goals = int(
+            math.floor(line)
+        )
 
         under = sum(
             PoissonPredictor.poisson_probability(
                 expected_goals,
                 goals,
             )
-            for goals in range(maximum_under_goals + 1)
+            for goals in range(
+                maximum_under_goals + 1
+            )
         )
 
         over = 1 - under
 
         return {
-            "over": ProbabilityPredictor._percentage(over),
-            "under": ProbabilityPredictor._percentage(under),
+            "over": ProbabilityPredictor._to_percent(over),
+            "under": ProbabilityPredictor._to_percent(
+                under
+            ),
         }
 
     @staticmethod
@@ -172,10 +226,10 @@ class ProbabilityPredictor:
         away_expected: float,
     ) -> dict:
         return {
-            "home": ProbabilityPredictor._percentage(
+            "home": ProbabilityPredictor._to_percent(
                 math.exp(-away_expected)
             ),
-            "away": ProbabilityPredictor._percentage(
+            "away": ProbabilityPredictor._to_percent(
                 math.exp(-home_expected)
             ),
         }
@@ -194,10 +248,10 @@ class ProbabilityPredictor:
         ) * math.exp(-home_expected)
 
         return {
-            "home": ProbabilityPredictor._percentage(
+            "home": ProbabilityPredictor._to_percent(
                 home_probability
             ),
-            "away": ProbabilityPredictor._percentage(
+            "away": ProbabilityPredictor._to_percent(
                 away_probability
             ),
         }
@@ -218,24 +272,35 @@ class ProbabilityPredictor:
 
         for home_goals, row in enumerate(matrix):
             for away_goals, probability in enumerate(row):
-                adjusted_home_goals = home_goals + home_line
+
+                adjusted_home_goals = (
+                    home_goals + home_line
+                )
 
                 if adjusted_home_goals > away_goals:
                     home_probability += probability
                 else:
                     away_probability += probability
 
-        total = home_probability + away_probability
+        total = (
+            home_probability
+            + away_probability
+        )
 
-        if total > 0:
-            home_probability /= total
-            away_probability /= total
+        if total <= 0:
+            return {
+                "home": 50.0,
+                "away": 50.0,
+            }
+
+        home_probability /= total
+        away_probability /= total
 
         return {
-            "home": ProbabilityPredictor._percentage(
+            "home": ProbabilityPredictor._to_percent(
                 home_probability
             ),
-            "away": ProbabilityPredictor._percentage(
+            "away": ProbabilityPredictor._to_percent(
                 away_probability
             ),
         }
@@ -255,11 +320,16 @@ class ProbabilityPredictor:
 
         for home_goals, row in enumerate(matrix):
             for away_goals, probability in enumerate(row):
+
                 scores.append(
                     {
-                        "score": f"{home_goals}-{away_goals}",
+                        "score": (
+                            f"{home_goals}-"
+                            f"{away_goals}"
+                        ),
                         "probability": (
-                            ProbabilityPredictor._percentage(
+                            ProbabilityPredictor
+                            ._to_percent(
                                 probability
                             )
                         ),
@@ -279,18 +349,28 @@ class ProbabilityPredictor:
         away_expected: float,
         period: str,
     ) -> tuple[float, float]:
+
         if period == "FIRST_HALF":
             multiplier = 0.45
+
         elif period == "SECOND_HALF":
             multiplier = 0.55
+
         else:
             raise ValueError(
-                "Period must be FIRST_HALF or SECOND_HALF"
+                "Period must be FIRST_HALF "
+                "or SECOND_HALF"
             )
 
         return (
-            round(home_expected * multiplier, 4),
-            round(away_expected * multiplier, 4),
+            round(
+                home_expected * multiplier,
+                4,
+            ),
+            round(
+                away_expected * multiplier,
+                4,
+            ),
         )
 
     @staticmethod
@@ -300,21 +380,28 @@ class ProbabilityPredictor:
         period: str,
     ) -> dict:
         period_home_xg, period_away_xg = (
-            ProbabilityPredictor.period_expected_goals(
+            ProbabilityPredictor
+            .period_expected_goals(
                 home_expected,
                 away_expected,
                 period,
             )
         )
 
-        result = ProbabilityPredictor.match_probabilities(
-            period_home_xg,
-            period_away_xg,
+        result = (
+            ProbabilityPredictor
+            .match_probabilities(
+                period_home_xg,
+                period_away_xg,
+            )
         )
 
-        btts = ProbabilityPredictor.btts_probability(
-            period_home_xg,
-            period_away_xg,
+        btts_yes = (
+            ProbabilityPredictor
+            .btts_probability(
+                period_home_xg,
+                period_away_xg,
+            )
         )
 
         return {
@@ -323,6 +410,10 @@ class ProbabilityPredictor:
             "home": result["home"],
             "draw": result["draw"],
             "away": result["away"],
-            "btts_yes": btts,
-            "btts_no": round(100 - btts, 2),
+            "btts_yes": btts_yes,
+            "btts_no": (
+                ProbabilityPredictor._clamp_percent(
+                    100 - btts_yes
+                )
+            ),
         }

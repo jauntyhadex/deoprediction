@@ -1,6 +1,8 @@
 from collections import defaultdict
 
-from app.prediction.confidence import ConfidenceCalculator
+from app.prediction.confidence import (
+    ConfidenceCalculator,
+)
 
 
 class MarketRanker:
@@ -11,8 +13,17 @@ class MarketRanker:
         "SECOND_HALF_RESULT",
     }
 
+    EXCLUDED_MARKETS = {
+        "CORRECT_SCORE",
+    }
+
+    MINIMUM_FAIR_ODDS = 1.15
+    MAXIMUM_FAIR_ODDS = 8.00
+    MAXIMUM_PROBABILITY = 86.95
+
     @staticmethod
     def group_key(market):
+
         line = market.line
 
         if market.market_type == "ASIAN_HANDICAP":
@@ -31,19 +42,77 @@ class MarketRanker:
         if market_type in MarketRanker.THREE_WAY_MARKETS:
             return 40.0
 
-        if market_type == "CORRECT_SCORE":
-            return 8.0
-
         return 55.0
 
     @staticmethod
     def calculate_score(market) -> float:
 
+        probability = float(
+            market.probability
+        )
+
+        confidence = float(
+            market.confidence
+        )
+
+        score = (
+            confidence * 0.70
+            + probability * 0.30
+        )
+
         return round(
-            float(market.confidence) * 0.70
-            + float(market.probability) * 0.30,
+            max(0.0, min(score, 100.0)),
             2,
         )
+
+    @staticmethod
+    def is_valid_market(market) -> bool:
+
+        probability = float(
+            market.probability
+        )
+
+        fair_odds = float(
+            market.fair_odds
+        )
+
+        if (
+            market.market_type
+            in MarketRanker.EXCLUDED_MARKETS
+        ):
+            return False
+
+        if probability <= 0:
+            return False
+
+        if (
+            probability
+            > MarketRanker.MAXIMUM_PROBABILITY
+        ):
+            return False
+
+        if (
+            fair_odds
+            < MarketRanker.MINIMUM_FAIR_ODDS
+        ):
+            return False
+
+        if (
+            fair_odds
+            > MarketRanker.MAXIMUM_FAIR_ODDS
+        ):
+            return False
+
+        minimum_probability = (
+            MarketRanker.minimum_probability(
+                market.market_type
+            )
+        )
+
+        if probability < minimum_probability:
+            return False
+
+        return True
 
     @staticmethod
     def rank(
@@ -51,16 +120,22 @@ class MarketRanker:
         limit: int = 5,
     ) -> list:
 
-        grouped = defaultdict(list)
+        grouped_markets = defaultdict(list)
 
         for market in markets:
-            grouped[
+
+            if not MarketRanker.is_valid_market(
+                market
+            ):
+                continue
+
+            grouped_markets[
                 MarketRanker.group_key(market)
             ].append(market)
 
-        best_per_group = []
+        candidates = []
 
-        for group in grouped.values():
+        for group in grouped_markets.values():
 
             best_market = max(
                 group,
@@ -70,40 +145,23 @@ class MarketRanker:
                 ),
             )
 
-            best_per_group.append(
+            candidates.append(
                 {
                     "market": best_market,
-                    "score": MarketRanker.calculate_score(
-                        best_market
+                    "score": (
+                        MarketRanker.calculate_score(
+                            best_market
+                        )
                     ),
-                    "grade": ConfidenceCalculator.grade(
-                        best_market.confidence
+                    "grade": (
+                        ConfidenceCalculator.grade(
+                            best_market.confidence
+                        )
                     ),
                 }
             )
 
-        strict_candidates = []
-        fallback_candidates = []
-
-        for item in best_per_group:
-
-            market = item["market"]
-
-            minimum = MarketRanker.minimum_probability(
-                market.market_type
-            )
-
-            is_strict = (
-                1.15 <= market.fair_odds <= 12
-                and market.probability >= minimum
-            )
-
-            if is_strict:
-                strict_candidates.append(item)
-            else:
-                fallback_candidates.append(item)
-
-        strict_candidates.sort(
+        candidates.sort(
             key=lambda item: (
                 item["score"],
                 item["market"].probability,
@@ -111,32 +169,4 @@ class MarketRanker:
             reverse=True,
         )
 
-        fallback_candidates.sort(
-            key=lambda item: (
-                item["score"],
-                item["market"].probability,
-            ),
-            reverse=True,
-        )
-
-        ranked = strict_candidates[:limit]
-
-        used_market_ids = {
-            item["market"].id
-            for item in ranked
-        }
-
-        for item in fallback_candidates:
-
-            if len(ranked) >= limit:
-                break
-
-            if item["market"].id in used_market_ids:
-                continue
-
-            ranked.append(item)
-            used_market_ids.add(
-                item["market"].id
-            )
-
-        return ranked
+        return candidates[:limit]
