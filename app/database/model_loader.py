@@ -5,6 +5,7 @@ from app.models.head_to_head import HeadToHead
 from app.models.player import Player
 from app.models.prediction import Prediction
 from app.models.prediction_market import PredictionMarket
+from app.models.prediction_pick import PredictionPick
 from app.models.strength_of_schedule import StrengthOfSchedule
 from app.models.team import Team
 from app.models.team_form import TeamForm
