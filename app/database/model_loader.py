@@ -4,6 +4,7 @@ from app.models.fixture import Fixture
 from app.models.head_to_head import HeadToHead
 from app.models.player import Player
 from app.models.prediction import Prediction
+from app.models.prediction_evaluation import PredictionEvaluation
 from app.models.prediction_market import PredictionMarket
 from app.models.prediction_pick import PredictionPick
 from app.models.strength_of_schedule import StrengthOfSchedule
@@ -13,3 +14,4 @@ from app.models.team_home_away_stats import TeamHomeAwayStats
 from app.models.team_power_rating import TeamPowerRating
 from app.models.team_rating import TeamRating
 from app.models.team_stat import TeamStat
+from app.models.walk_forward_evaluation import WalkForwardEvaluation
