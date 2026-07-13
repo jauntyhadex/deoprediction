@@ -4,6 +4,9 @@ from app.database import model_loader
 from app.api.routes.prediction_picks import (
     router as prediction_picks_router,
 )
+from app.api.routes.system_status import (
+    router as system_status_router,
+)
 
 
 app = FastAPI(
@@ -13,7 +16,13 @@ app = FastAPI(
 )
 
 
-app.include_router(prediction_picks_router)
+app.include_router(
+    prediction_picks_router
+)
+
+app.include_router(
+    system_status_router
+)
 
 
 @app.get("/")
