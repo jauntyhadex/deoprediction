@@ -16,6 +16,10 @@ STEPS = [
         "Rebuild prediction pipeline",
         "app.scripts.rebuild_prediction_pipeline",
     ),
+    (
+        "Run API smoke test",
+        "app.scripts.check_api",
+    ),
 ]
 
 
