@@ -9,6 +9,10 @@ STEPS = [
         "app.scripts.import_fixtures",
     ),
     (
+        "Rebuild walk-forward validation",
+        "app.scripts.walk_forward_backtest",
+    ),
+    (
         "Rebuild prediction pipeline",
         "app.scripts.rebuild_prediction_pipeline",
     ),
