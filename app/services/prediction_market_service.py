@@ -33,7 +33,10 @@ class PredictionMarketService:
         "TIMED",
     ]
 
-    def __init__(self, db):
+    def __init__(
+        self,
+        db,
+    ):
         self.db = db
 
     @staticmethod
@@ -44,7 +47,10 @@ class PredictionMarketService:
         return round(
             max(
                 0.0,
-                min(float(probability), 100.0),
+                min(
+                    float(probability),
+                    100.0,
+                ),
             ),
             2,
         )
@@ -69,18 +75,29 @@ class PredictionMarketService:
             2,
         )
 
-    def create(self, **kwargs):
+    def create(
+        self,
+        **kwargs,
+    ):
 
-        probability = self.normalize_probability(
-            kwargs["probability"]
+        probability = (
+            self.normalize_probability(
+                kwargs["probability"]
+            )
         )
 
-        market_type = kwargs["market_type"]
+        market_type = (
+            kwargs["market_type"]
+        )
 
-        kwargs["probability"] = probability
-
-        kwargs["fair_odds"] = self.fair_odds(
+        kwargs["probability"] = (
             probability
+        )
+
+        kwargs["fair_odds"] = (
+            self.fair_odds(
+                probability
+            )
         )
 
         kwargs["confidence"] = (
@@ -90,9 +107,13 @@ class PredictionMarketService:
             )
         )
 
-        market = PredictionMarket(**kwargs)
+        market = PredictionMarket(
+            **kwargs
+        )
 
-        self.db.add(market)
+        self.db.add(
+            market
+        )
 
         return market
 
@@ -123,11 +144,21 @@ class PredictionMarketService:
             .get_reports_by_competition_id()
         )
 
-        home_team = aliased(Team)
-        away_team = aliased(Team)
+        home_team = aliased(
+            Team
+        )
 
-        home_team_stat = aliased(TeamStat)
-        away_team_stat = aliased(TeamStat)
+        away_team = aliased(
+            Team
+        )
+
+        home_team_stat = aliased(
+            TeamStat
+        )
+
+        away_team_stat = aliased(
+            TeamStat
+        )
 
         home_venue_stat = aliased(
             TeamHomeAwayStats
@@ -186,10 +217,9 @@ class PredictionMarketService:
                 == Fixture.away_team_id,
             )
             .filter(
-                Prediction.confidence
-                >= (
-                    PredictionQualityGate
-                    .MINIMUM_CONFIDENCE
+                PredictionQualityGate
+                .sql_expression(
+                    Prediction
                 ),
                 home_team_stat.matches_played
                 >= (
@@ -219,7 +249,8 @@ class PredictionMarketService:
             now = datetime.utcnow()
 
             query = query.filter(
-                Fixture.kickoff_time >= now,
+                Fixture.kickoff_time
+                >= now,
                 Fixture.status.in_(
                     self.UPCOMING_STATUSES
                 ),
@@ -290,14 +321,21 @@ class PredictionMarketService:
         )
 
         query = query.order_by(
-            PredictionMarket.confidence.desc(),
-            PredictionMarket.probability.desc(),
+            PredictionMarket
+            .confidence.desc(),
+            PredictionMarket
+            .probability.desc(),
             Fixture.kickoff_time.asc(),
         )
 
         if not one_per_fixture:
 
-            rows = query.limit(limit).all()
+            rows = (
+                query.limit(
+                    limit
+                )
+                .all()
+            )
 
             return [
                 self._serialize_market(
@@ -332,7 +370,10 @@ class PredictionMarketService:
             away,
         ) in query.yield_per(500):
 
-            if fixture.id in used_fixture_ids:
+            if (
+                fixture.id
+                in used_fixture_ids
+            ):
                 continue
 
             results.append(
@@ -384,7 +425,16 @@ class PredictionMarketService:
 
         score = max(
             0.0,
-            min(score, 100.0),
+            min(
+                score,
+                100.0,
+            ),
+        )
+
+        quality_details = (
+            PredictionQualityGate.details(
+                prediction
+            )
         )
 
         reliability_report = (
@@ -414,7 +464,9 @@ class PredictionMarketService:
                 ]
             ),
             "competition_status": (
-                reliability_report["status"]
+                reliability_report[
+                    "status"
+                ]
             ),
             "competition_status_message": (
                 reliability_report[
@@ -427,38 +479,62 @@ class PredictionMarketService:
                 ]
             ),
             "competition_accuracy": (
-                reliability_report["accuracy"]
+                reliability_report[
+                    "accuracy"
+                ]
             ),
             "competition_brier": (
-                reliability_report["brier"]
+                reliability_report[
+                    "brier"
+                ]
             ),
             "kickoff_time": (
                 fixture.kickoff_time
             ),
             "status": fixture.status,
-            "home_team": home_team.name,
-            "away_team": away_team.name,
+            "home_team": (
+                home_team.name
+            ),
+            "away_team": (
+                away_team.name
+            ),
             "market_type": (
                 market.market_type
             ),
-            "selection": market.selection,
+            "selection": (
+                market.selection
+            ),
             "line": market.line,
             "probability": round(
                 probability,
                 2,
             ),
             "fair_odds": round(
-                float(market.fair_odds),
+                float(
+                    market.fair_odds
+                ),
                 2,
             ),
             "market_confidence": round(
                 confidence,
                 2,
             ),
-            "fixture_confidence": round(
-                float(prediction.confidence),
-                2,
+            "fixture_result": (
+                quality_details[
+                    "predicted_result"
+                ]
             ),
+            "fixture_confidence": (
+                quality_details[
+                    "confidence"
+                ]
+            ),
+            "fixture_probability_margin": (
+                quality_details[
+                    "margin"
+                ]
+            ),
+            "quality_gate": "PASSED",
             "data_quality": "SUFFICIENT",
             "score": round(
                 score,
