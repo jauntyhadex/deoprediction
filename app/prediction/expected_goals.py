@@ -3,6 +3,7 @@ from app.models.strength_of_schedule import StrengthOfSchedule
 from app.models.team_form import TeamForm
 from app.models.team_home_away_stats import TeamHomeAwayStats
 from app.models.team_power_rating import TeamPowerRating
+from app.prediction.xg_bias_correction import XGBiasCorrection
 
 
 class ExpectedGoalsCalculator:
@@ -390,7 +391,25 @@ class ExpectedGoalsCalculator:
             )
         )
 
+        base_home_xg = round(
+            home_expected,
+            2,
+        )
+
+        base_away_xg = round(
+            away_expected,
+            2,
+        )
+
+        (
+            corrected_home_xg,
+            corrected_away_xg,
+        ) = XGBiasCorrection.apply(
+            home_xg=base_home_xg,
+            away_xg=base_away_xg,
+        )
+
         return (
-            round(home_expected, 2),
-            round(away_expected, 2),
+            round(corrected_home_xg, 2),
+            round(corrected_away_xg, 2),
         )

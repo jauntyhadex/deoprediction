@@ -9,6 +9,7 @@ from app.models.walk_forward_evaluation import (
     WalkForwardEvaluation,
 )
 from app.prediction.probability import ProbabilityPredictor
+from app.prediction.xg_bias_correction import XGBiasCorrection
 
 
 MAX_HISTORY_MATCHES = 10
@@ -283,9 +284,27 @@ def calculate_expected_goals(
         MAX_EXPECTED_GOALS,
     )
 
+    base_home_xg = round(
+        home_expected,
+        2,
+    )
+
+    base_away_xg = round(
+        away_expected,
+        2,
+    )
+
+    (
+        corrected_home_xg,
+        corrected_away_xg,
+    ) = XGBiasCorrection.apply(
+        home_xg=base_home_xg,
+        away_xg=base_away_xg,
+    )
+
     return (
-        round(home_expected, 2),
-        round(away_expected, 2),
+        round(corrected_home_xg, 2),
+        round(corrected_away_xg, 2),
     )
 
 

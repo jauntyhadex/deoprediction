@@ -3,8 +3,8 @@ from sqlalchemy import and_, or_
 
 class PredictionQualityGate:
 
-    MINIMUM_CONFIDENCE = 35.0
-    MINIMUM_MARGIN = 10.0
+    MINIMUM_CONFIDENCE = 40.0
+    MINIMUM_MARGIN = 5.0
 
     RESULT_FIELDS = {
         "HOME": "home_win_probability",
