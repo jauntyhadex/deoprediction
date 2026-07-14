@@ -92,7 +92,7 @@ def main():
             loss_rate=loss_rate,
         )
 
-        print(f"{team.name} ✔")
+        print(f"{team.name} OK")
 
     db.close()
 

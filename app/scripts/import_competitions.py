@@ -16,7 +16,7 @@ def main():
 
         for competition in competitions:
             saved = service.create(competition)
-            print(f"✓ {saved.name}")
+            print(f"OK {saved.name}")
 
     finally:
         db.close()
