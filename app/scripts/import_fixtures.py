@@ -251,6 +251,10 @@ def main():
                                 field_value,
                             )
 
+                        existing_fixture.updated_at = (
+                            datetime.utcnow()
+                        )
+
                         fixtures_updated += 1
                         competition_updated += 1
 
@@ -338,3 +342,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

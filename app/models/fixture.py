@@ -9,7 +9,11 @@ from app.database.base import Base
 class Fixture(Base):
     __tablename__ = "fixtures"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        index=True,
+    )
 
     api_fixture_id: Mapped[int | None] = mapped_column(
         Integer,
@@ -62,7 +66,9 @@ class Fixture(Base):
         nullable=True,
     )
 
-    competition = relationship("Competition")
+    competition = relationship(
+        "Competition"
+    )
 
     home_team = relationship(
         "Team",
@@ -77,4 +83,12 @@ class Fixture(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=datetime.utcnow,
+        nullable=False,
+    )
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
     )

@@ -42,10 +42,10 @@ def system_status():
             .count()
         )
 
-        latest_fixture_created_at = (
+        latest_fixture_updated_at = (
             db.query(
                 func.max(
-                    Fixture.created_at
+                    Fixture.updated_at
                 )
             )
             .scalar()
@@ -69,8 +69,8 @@ def system_status():
                 "markets": market_count,
                 "picks": pick_count,
             },
-            "latest_fixture_record_created_at": (
-                latest_fixture_created_at
+            "latest_fixture_updated_at": (
+                latest_fixture_updated_at
             ),
             "latest_fixture_kickoff_time": (
                 latest_fixture_kickoff_time
@@ -80,3 +80,4 @@ def system_status():
     finally:
 
         db.close()
+
