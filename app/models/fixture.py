@@ -48,7 +48,7 @@ class Fixture(Base):
 
     status: Mapped[str] = mapped_column(
         String(30),
-        default="Scheduled",
+        default="SCHEDULED",
     )
 
     kickoff_time: Mapped[datetime] = mapped_column(

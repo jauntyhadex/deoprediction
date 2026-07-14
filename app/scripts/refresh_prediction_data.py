@@ -36,6 +36,10 @@ STEPS = [
         "Run competition API test",
         "app.scripts.check_competitions",
     ),
+    (
+        "Run fixture status audit",
+        "app.scripts.check_fixture_statuses",
+    ),
 ]
 
 

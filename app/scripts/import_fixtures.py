@@ -5,6 +5,9 @@ from app.database import model_loader
 from app.database.connection import SessionLocal
 from app.models.competition import Competition
 from app.models.fixture import Fixture
+from app.utils.fixture_status_utils import (
+    normalize_fixture_status,
+)
 from app.models.team import Team
 from app.providers.football.fixture_provider import FixtureProvider
 
@@ -225,8 +228,10 @@ def main() -> None:
                             )
                         ),
                         "venue": None,
-                        "status": match.get(
-                            "status"
+                        "status": normalize_fixture_status(
+                            match.get(
+                                "status"
+                            )
                         ),
                         "kickoff_time": (
                             parse_datetime(

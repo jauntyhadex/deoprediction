@@ -10,6 +10,9 @@ from app.database import model_loader
 from app.database.connection import SessionLocal
 from app.models.competition import Competition
 from app.models.fixture import Fixture
+from app.utils.fixture_status_utils import (
+    normalize_fixture_status,
+)
 from app.models.team import Team
 
 
@@ -310,10 +313,11 @@ def import_match(
         requested_season=requested_season,
     )
 
-    status = limited_text(
+    status = normalize_fixture_status(
         match_data.get("status"),
-        30,
-        fallback="SCHEDULED",
+        kickoff_time=kickoff_time,
+        home_score=home_score,
+        away_score=away_score,
     )
 
     venue = limited_text(
