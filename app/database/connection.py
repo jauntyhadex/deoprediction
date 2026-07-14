@@ -3,12 +3,15 @@ from sqlalchemy.orm import sessionmaker
 
 from app.config.settings import settings
 
+
 DATABASE_URL = settings.database_url
+
 
 engine = create_engine(
     DATABASE_URL,
-    echo=True,
+    echo=settings.database_echo,
 )
+
 
 SessionLocal = sessionmaker(
     autoflush=False,
