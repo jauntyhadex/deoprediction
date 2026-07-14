@@ -1,5 +1,9 @@
 from fastapi import FastAPI
 
+from app.api.routes.teams import (
+    router as teams_router,
+)
+
 from app.api.routes.fixtures import (
     router as fixtures_router,
 )
@@ -49,6 +53,10 @@ app.include_router(
 
 app.include_router(
     fixtures_router
+)
+
+app.include_router(
+    teams_router
 )
 
 app.include_router(

@@ -44,6 +44,10 @@ STEPS = [
         "Run fixture API test",
         "app.scripts.check_fixtures",
     ),
+    (
+        "Run team API test",
+        "app.scripts.check_teams",
+    ),
 ]
 
 
