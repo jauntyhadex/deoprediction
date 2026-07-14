@@ -1,5 +1,9 @@
 from fastapi import FastAPI
 
+from app.api.routes.competitions import (
+    router as competitions_router,
+)
+
 from app.api.routes.auth import (
     router as auth_router,
 )
@@ -33,6 +37,10 @@ app.include_router(
 
 app.include_router(
     timezones_router
+)
+
+app.include_router(
+    competitions_router
 )
 
 app.include_router(

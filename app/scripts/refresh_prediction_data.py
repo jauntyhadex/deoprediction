@@ -32,6 +32,10 @@ STEPS = [
         "Run prediction date filter test",
         "app.scripts.check_prediction_date_filters",
     ),
+    (
+        "Run competition API test",
+        "app.scripts.check_competitions",
+    ),
 ]
 
 
