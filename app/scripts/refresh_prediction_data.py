@@ -24,6 +24,10 @@ STEPS = [
         "Run authentication smoke test",
         "app.scripts.check_auth",
     ),
+    (
+        "Run public guest access test",
+        "app.scripts.check_public_access",
+    ),
 ]
 
 
