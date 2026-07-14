@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import insert
 
@@ -31,7 +31,7 @@ class BulkPredictionMarketService:
         self.db = db
         self.rows: list[dict] = []
         self.created_count = 0
-        self.created_at = datetime.utcnow()
+        self.created_at = datetime.now(UTC).replace(tzinfo=None)
 
     @staticmethod
     def fair_odds(

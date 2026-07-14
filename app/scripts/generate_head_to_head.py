@@ -1,5 +1,5 @@
 from collections import defaultdict
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import insert
 
@@ -85,7 +85,7 @@ def main() -> None:
             ):
                 stats["over25"] += 1
 
-        created_at = datetime.utcnow()
+        created_at = datetime.now(UTC).replace(tzinfo=None)
         rows = []
 
         for (

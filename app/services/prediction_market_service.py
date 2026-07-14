@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import aliased
 
@@ -246,7 +246,7 @@ class PredictionMarketService:
 
         if upcoming_only:
 
-            now = datetime.utcnow()
+            now = datetime.now(UTC).replace(tzinfo=None)
 
             query = query.filter(
                 Fixture.kickoff_time

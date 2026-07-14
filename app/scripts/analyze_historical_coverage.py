@@ -1,5 +1,5 @@
 from collections import Counter, defaultdict
-from datetime import datetime
+from datetime import UTC, datetime
 
 from app.database import model_loader
 from app.database.connection import SessionLocal
@@ -142,7 +142,7 @@ def main():
                     fixture.status
                     in UPCOMING_STATUSES
                     and fixture.kickoff_time
-                    >= datetime.utcnow()
+                    >= datetime.now(UTC).replace(tzinfo=None)
                 )
             ]
 

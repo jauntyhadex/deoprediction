@@ -1,5 +1,5 @@
 from collections import defaultdict
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import func
 
@@ -244,7 +244,7 @@ def main():
                     UPCOMING_STATUSES
                 ),
                 Fixture.kickoff_time
-                >= datetime.utcnow(),
+                >= datetime.now(UTC).replace(tzinfo=None),
             )
             .group_by(
                 Fixture.competition_id

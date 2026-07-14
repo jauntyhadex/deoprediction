@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 import time
 
 from app.database import model_loader
@@ -137,7 +137,7 @@ def main() -> None:
                 competition_updated = 0
                 competition_skipped = 0
 
-                refresh_time = datetime.utcnow()
+                refresh_time = datetime.now(UTC).replace(tzinfo=None)
 
                 for match in matches:
 

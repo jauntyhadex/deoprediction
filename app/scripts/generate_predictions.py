@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import insert
 
@@ -39,7 +39,7 @@ def main() -> None:
         )
 
         prediction_rows = []
-        created_at = datetime.utcnow()
+        created_at = datetime.now(UTC).replace(tzinfo=None)
 
         print(
             "Generating predictions for "
