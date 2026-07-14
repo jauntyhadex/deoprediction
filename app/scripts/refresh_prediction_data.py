@@ -40,6 +40,10 @@ STEPS = [
         "Run fixture status audit",
         "app.scripts.check_fixture_statuses",
     ),
+    (
+        "Run fixture API test",
+        "app.scripts.check_fixtures",
+    ),
 ]
 
 

@@ -1,5 +1,9 @@
 from fastapi import FastAPI
 
+from app.api.routes.fixtures import (
+    router as fixtures_router,
+)
+
 from app.api.routes.competitions import (
     router as competitions_router,
 )
@@ -41,6 +45,10 @@ app.include_router(
 
 app.include_router(
     competitions_router
+)
+
+app.include_router(
+    fixtures_router
 )
 
 app.include_router(
