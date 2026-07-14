@@ -1,5 +1,9 @@
-from app.prediction.expected_goals import ExpectedGoalsCalculator
-from app.prediction.probability import ProbabilityPredictor
+from app.prediction.expected_goals import (
+    ExpectedGoalsCalculator,
+)
+from app.prediction.probability import (
+    ProbabilityPredictor,
+)
 
 
 class MatchPredictor:
@@ -9,6 +13,7 @@ class MatchPredictor:
         db,
         home_team_id: int,
         away_team_id: int,
+        data_cache: dict | None = None,
     ):
 
         home_xg, away_xg = (
@@ -16,18 +21,21 @@ class MatchPredictor:
                 db,
                 home_team_id,
                 away_team_id,
+                data_cache=data_cache,
             )
         )
 
         probabilities = (
-            ProbabilityPredictor.match_probabilities(
+            ProbabilityPredictor
+            .match_probabilities(
                 home_xg,
                 away_xg,
             )
         )
 
         btts = (
-            ProbabilityPredictor.btts_probability(
+            ProbabilityPredictor
+            .btts_probability(
                 home_xg,
                 away_xg,
             )

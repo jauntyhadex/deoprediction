@@ -6,6 +6,9 @@ from app.database import model_loader
 from app.database.connection import SessionLocal
 from app.models.fixture import Fixture
 from app.models.prediction_market import PredictionMarket
+from app.prediction.expected_goals import (
+    ExpectedGoalsCalculator,
+)
 from app.prediction.match_predictor import MatchPredictor
 from app.prediction.confidence import (
     ConfidenceCalculator,
@@ -563,6 +566,11 @@ def main():
         fixtures = db.query(Fixture).all()
         total_fixtures = len(fixtures)
 
+        prediction_data_cache = (
+            ExpectedGoalsCalculator
+            .build_cache(db)
+        )
+
         print(
             f"Generating markets for "
             f"{total_fixtures} fixtures..."
@@ -576,6 +584,9 @@ def main():
                 db,
                 fixture.home_team_id,
                 fixture.away_team_id,
+                data_cache=(
+                    prediction_data_cache
+                ),
             )
 
             home_xg = prediction["home_xg"]

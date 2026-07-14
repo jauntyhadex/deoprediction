@@ -15,11 +15,70 @@ class ExpectedGoalsCalculator:
     MAX_EXPECTED_GOALS = 3.50
 
     @staticmethod
+    def build_cache(db) -> dict:
+
+        return {
+            "venue": {
+                row.team_id: row
+                for row in db.query(
+                    TeamHomeAwayStats
+                ).all()
+            },
+            "elo": {
+                row.team_id: row
+                for row in db.query(
+                    EloRating
+                ).all()
+            },
+            "form": {
+                row.team_id: row
+                for row in db.query(
+                    TeamForm
+                ).all()
+            },
+            "power": {
+                row.team_id: row
+                for row in db.query(
+                    TeamPowerRating
+                ).all()
+            },
+            "sos": {
+                row.team_id: row
+                for row in db.query(
+                    StrengthOfSchedule
+                ).all()
+            },
+        }
+
+    @staticmethod
+    def get_record(
+        db,
+        model,
+        team_id: int,
+        cache: dict | None,
+        cache_key: str,
+    ):
+
+        if cache is not None:
+            return cache[
+                cache_key
+            ].get(team_id)
+
+        return (
+            db.query(model)
+            .filter(
+                model.team_id == team_id
+            )
+            .first()
+        )
+
+    @staticmethod
     def clamp(
         value: float,
         minimum: float,
         maximum: float,
     ) -> float:
+
         return max(
             minimum,
             min(float(value), maximum),
@@ -72,92 +131,107 @@ class ExpectedGoalsCalculator:
         db,
         home_team_id: int,
         away_team_id: int,
+        data_cache: dict | None = None,
     ) -> tuple[float, float]:
 
         home_stats = (
-            db.query(TeamHomeAwayStats)
-            .filter(
-                TeamHomeAwayStats.team_id
-                == home_team_id
+            ExpectedGoalsCalculator.get_record(
+                db,
+                TeamHomeAwayStats,
+                home_team_id,
+                data_cache,
+                "venue",
             )
-            .first()
         )
 
         away_stats = (
-            db.query(TeamHomeAwayStats)
-            .filter(
-                TeamHomeAwayStats.team_id
-                == away_team_id
+            ExpectedGoalsCalculator.get_record(
+                db,
+                TeamHomeAwayStats,
+                away_team_id,
+                data_cache,
+                "venue",
             )
-            .first()
         )
 
         home_elo = (
-            db.query(EloRating)
-            .filter(
-                EloRating.team_id == home_team_id
+            ExpectedGoalsCalculator.get_record(
+                db,
+                EloRating,
+                home_team_id,
+                data_cache,
+                "elo",
             )
-            .first()
         )
 
         away_elo = (
-            db.query(EloRating)
-            .filter(
-                EloRating.team_id == away_team_id
+            ExpectedGoalsCalculator.get_record(
+                db,
+                EloRating,
+                away_team_id,
+                data_cache,
+                "elo",
             )
-            .first()
         )
 
         home_form = (
-            db.query(TeamForm)
-            .filter(
-                TeamForm.team_id == home_team_id
+            ExpectedGoalsCalculator.get_record(
+                db,
+                TeamForm,
+                home_team_id,
+                data_cache,
+                "form",
             )
-            .first()
         )
 
         away_form = (
-            db.query(TeamForm)
-            .filter(
-                TeamForm.team_id == away_team_id
+            ExpectedGoalsCalculator.get_record(
+                db,
+                TeamForm,
+                away_team_id,
+                data_cache,
+                "form",
             )
-            .first()
         )
 
         home_power = (
-            db.query(TeamPowerRating)
-            .filter(
-                TeamPowerRating.team_id
-                == home_team_id
+            ExpectedGoalsCalculator.get_record(
+                db,
+                TeamPowerRating,
+                home_team_id,
+                data_cache,
+                "power",
             )
-            .first()
         )
 
         away_power = (
-            db.query(TeamPowerRating)
-            .filter(
-                TeamPowerRating.team_id
-                == away_team_id
+            ExpectedGoalsCalculator.get_record(
+                db,
+                TeamPowerRating,
+                away_team_id,
+                data_cache,
+                "power",
             )
-            .first()
         )
 
         home_sos = (
-            db.query(StrengthOfSchedule)
-            .filter(
-                StrengthOfSchedule.team_id
-                == home_team_id
+            ExpectedGoalsCalculator.get_record(
+                db,
+                StrengthOfSchedule,
+                home_team_id,
+                data_cache,
+                "sos",
             )
-            .first()
         )
 
         away_sos = (
-            db.query(StrengthOfSchedule)
-            .filter(
-                StrengthOfSchedule.team_id
-                == away_team_id
+            ExpectedGoalsCalculator.get_record(
+                db,
+                StrengthOfSchedule,
+                away_team_id,
+                data_cache,
+                "sos",
             )
-            .first()
         )
 
         home_scoring_rate = (
@@ -234,25 +308,30 @@ class ExpectedGoalsCalculator:
             + home_conceding_rate * 0.45
         )
 
-        # Home advantage
-
         home_expected *= 1.08
 
-        # Elo adjustment
-
         home_elo_value = float(
-            getattr(home_elo, "elo_rating", 1500)
+            getattr(
+                home_elo,
+                "elo_rating",
+                1500,
+            )
         )
 
         away_elo_value = float(
-            getattr(away_elo, "elo_rating", 1500)
+            getattr(
+                away_elo,
+                "elo_rating",
+                1500,
+            )
         )
 
         elo_difference = (
-            home_elo_value - away_elo_value
+            home_elo_value
+            - away_elo_value
         )
 
-        home_elo_multiplier = (
+        home_expected *= (
             ExpectedGoalsCalculator.clamp(
                 1 + elo_difference / 2000,
                 0.85,
@@ -260,18 +339,13 @@ class ExpectedGoalsCalculator:
             )
         )
 
-        away_elo_multiplier = (
+        away_expected *= (
             ExpectedGoalsCalculator.clamp(
                 1 - elo_difference / 2000,
                 0.85,
                 1.15,
             )
         )
-
-        home_expected *= home_elo_multiplier
-        away_expected *= away_elo_multiplier
-
-        # Recent form adjustment
 
         home_form_points = float(
             getattr(
@@ -290,7 +364,8 @@ class ExpectedGoalsCalculator:
         )
 
         form_difference = (
-            home_form_points - away_form_points
+            home_form_points
+            - away_form_points
         ) / 30
 
         form_difference = (
@@ -309,8 +384,6 @@ class ExpectedGoalsCalculator:
             1 - form_difference * 0.10
         )
 
-        # Power-rating adjustment
-
         home_power_value = float(
             getattr(
                 home_power,
@@ -328,7 +401,8 @@ class ExpectedGoalsCalculator:
         )
 
         power_difference = (
-            ExpectedGoalsCalculator.relative_difference(
+            ExpectedGoalsCalculator
+            .relative_difference(
                 home_power_value,
                 away_power_value,
             )
@@ -341,8 +415,6 @@ class ExpectedGoalsCalculator:
         away_expected *= (
             1 - power_difference * 0.08
         )
-
-        # Strength-of-schedule adjustment
 
         home_sos_value = float(
             getattr(
@@ -361,7 +433,8 @@ class ExpectedGoalsCalculator:
         )
 
         sos_difference = (
-            ExpectedGoalsCalculator.relative_difference(
+            ExpectedGoalsCalculator
+            .relative_difference(
                 home_sos_value,
                 away_sos_value,
             )
@@ -378,16 +451,20 @@ class ExpectedGoalsCalculator:
         home_expected = (
             ExpectedGoalsCalculator.clamp(
                 home_expected,
-                ExpectedGoalsCalculator.MIN_EXPECTED_GOALS,
-                ExpectedGoalsCalculator.MAX_EXPECTED_GOALS,
+                ExpectedGoalsCalculator
+                .MIN_EXPECTED_GOALS,
+                ExpectedGoalsCalculator
+                .MAX_EXPECTED_GOALS,
             )
         )
 
         away_expected = (
             ExpectedGoalsCalculator.clamp(
                 away_expected,
-                ExpectedGoalsCalculator.MIN_EXPECTED_GOALS,
-                ExpectedGoalsCalculator.MAX_EXPECTED_GOALS,
+                ExpectedGoalsCalculator
+                .MIN_EXPECTED_GOALS,
+                ExpectedGoalsCalculator
+                .MAX_EXPECTED_GOALS,
             )
         )
 
