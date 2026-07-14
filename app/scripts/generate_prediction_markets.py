@@ -1,12 +1,109 @@
+from datetime import datetime
+
+from sqlalchemy import insert
+
 from app.database import model_loader
 from app.database.connection import SessionLocal
 from app.models.fixture import Fixture
 from app.models.prediction_market import PredictionMarket
 from app.prediction.match_predictor import MatchPredictor
+from app.prediction.confidence import (
+    ConfidenceCalculator,
+)
 from app.prediction.probability import ProbabilityPredictor
 from app.services.prediction_market_service import (
     PredictionMarketService,
 )
+
+
+class BulkPredictionMarketService:
+
+    INSERT_BATCH_SIZE = 5_000
+
+    def __init__(
+        self,
+        db,
+    ) -> None:
+
+        self.db = db
+        self.rows: list[dict] = []
+        self.created_count = 0
+        self.created_at = datetime.utcnow()
+
+    @staticmethod
+    def fair_odds(
+        probability: float,
+    ) -> float:
+
+        return (
+            PredictionMarketService
+            .fair_odds(
+                probability
+            )
+        )
+
+    def create(
+        self,
+        **kwargs,
+    ) -> None:
+
+        probability = (
+            PredictionMarketService
+            .normalize_probability(
+                kwargs["probability"]
+            )
+        )
+
+        market_type = kwargs[
+            "market_type"
+        ]
+
+        kwargs["probability"] = probability
+
+        kwargs["fair_odds"] = (
+            self.fair_odds(
+                probability
+            )
+        )
+
+        kwargs["confidence"] = (
+            ConfidenceCalculator.calculate(
+                market_type,
+                probability,
+            )
+        )
+
+        kwargs["created_at"] = (
+            self.created_at
+        )
+
+        self.rows.append(
+            kwargs
+        )
+
+        if (
+            len(self.rows)
+            >= self.INSERT_BATCH_SIZE
+        ):
+            self.flush()
+
+    def flush(self) -> None:
+
+        if not self.rows:
+            return
+
+        self.db.execute(
+            insert(
+                PredictionMarket
+            ),
+            self.rows,
+        )
+
+        self.created_count += len(
+            self.rows
+        )
+
+        self.rows.clear()
 
 
 TOTAL_LINES = [
@@ -456,13 +553,12 @@ def generate_correct_score_markets(
 
 def main():
     db = SessionLocal()
-    service = PredictionMarketService(db)
+    service = BulkPredictionMarketService(db)
 
     try:
         db.query(PredictionMarket).delete(
             synchronize_session=False
         )
-        db.commit()
 
         fixtures = db.query(Fixture).all()
         total_fixtures = len(fixtures)
@@ -561,11 +657,12 @@ def main():
             )
 
             if index % 100 == 0:
-                db.commit()
 
                 print(
                     f"{index}/{total_fixtures} completed"
                 )
+
+        service.flush()
 
         db.commit()
 
