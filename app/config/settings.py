@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     app_name: str = "DeoPrediction"
     app_version: str = "0.1.0"
     environment: str = "development"
+    default_timezone: str = "Africa/Lagos"
 
     # Database
     database_url: str

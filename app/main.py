@@ -7,6 +7,9 @@ from app.api.routes.prediction_picks import (
 from app.api.routes.system_status import (
     router as system_status_router,
 )
+from app.api.routes.timezones import (
+    router as timezones_router,
+)
 
 
 app = FastAPI(
@@ -22,6 +25,10 @@ app.include_router(
 
 app.include_router(
     system_status_router
+)
+
+app.include_router(
+    timezones_router
 )
 
 

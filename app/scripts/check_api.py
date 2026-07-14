@@ -177,6 +177,57 @@ def main() -> None:
         ),
     )
 
+
+    timezone_data = check_endpoint(
+        name="Timezone list endpoint",
+        path=(
+            "/timezones"
+            "?search=Lagos"
+            "&limit=10"
+        ),
+    )
+
+    if (
+        "Africa/Lagos"
+        not in timezone_data.get(
+            "timezones",
+            [],
+        )
+    ):
+
+        print(
+            "FAILED: Africa/Lagos "
+            "timezone was not returned"
+        )
+
+        raise SystemExit(1)
+
+    conversion_data = check_endpoint(
+        name="Timezone conversion endpoint",
+        path=(
+            "/timezones/convert"
+            "?timestamp="
+            "2026-07-14T15%3A00%3A00Z"
+            "&timezone=Africa%2FLagos"
+        ),
+    )
+
+    if (
+        conversion_data.get("timezone")
+        != "Africa/Lagos"
+        or not conversion_data.get(
+            "local_time",
+            "",
+        ).endswith("+01:00")
+    ):
+
+        print(
+            "FAILED: Lagos timezone "
+            "conversion is incorrect"
+        )
+
+        raise SystemExit(1)
+
     print()
     print(
         "DATABASE COUNTS"
