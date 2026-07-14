@@ -105,6 +105,29 @@ def main() -> None:
 
         raise SystemExit(1)
 
+    utc_timestamp_fields = (
+        "latest_fixture_updated_at",
+        "latest_fixture_kickoff_time",
+    )
+
+    for field_name in utc_timestamp_fields:
+
+        timestamp = status_data.get(
+            field_name
+        )
+
+        if (
+            timestamp is not None
+            and not timestamp.endswith("Z")
+        ):
+
+            print(
+                "FAILED: Timestamp is not "
+                f"explicit UTC: {field_name}"
+            )
+
+            raise SystemExit(1)
+
     counts = status_data.get(
         "counts",
         {},
