@@ -7,6 +7,7 @@ from app.models.fixture import Fixture
 from app.models.prediction import Prediction
 from app.models.prediction_market import PredictionMarket
 from app.models.prediction_pick import PredictionPick
+from app.utils.datetime_utils import to_utc_iso
 
 
 router = APIRouter(
@@ -69,10 +70,10 @@ def system_status():
                 "markets": market_count,
                 "picks": pick_count,
             },
-            "latest_fixture_updated_at": (
+            "latest_fixture_updated_at": to_utc_iso(
                 latest_fixture_updated_at
             ),
-            "latest_fixture_kickoff_time": (
+            "latest_fixture_kickoff_time": to_utc_iso(
                 latest_fixture_kickoff_time
             ),
         }

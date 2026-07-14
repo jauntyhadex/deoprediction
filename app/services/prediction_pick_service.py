@@ -10,6 +10,7 @@ from app.models.prediction_pick import (
     PredictionPick,
 )
 from app.models.team import Team
+from app.utils.datetime_utils import to_utc_iso
 from app.services.competition_reliability_service import (
     CompetitionReliabilityService,
 )
@@ -387,7 +388,7 @@ class PredictionPickService:
             "competition_brier": (
                 reliability_report["brier"]
             ),
-            "kickoff_time": (
+            "kickoff_time": to_utc_iso(
                 fixture.kickoff_time
             ),
             "status": fixture.status,
