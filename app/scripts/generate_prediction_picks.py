@@ -1,3 +1,7 @@
+from datetime import datetime
+
+from sqlalchemy import insert
+
 from app.database import model_loader
 from app.database.connection import SessionLocal
 from app.models.fixture import Fixture
@@ -18,9 +22,39 @@ from app.prediction.quality_gate import (
 
 
 PICKS_PER_FIXTURE = 5
+MARKET_STREAM_BATCH_SIZE = 2_000
+INSERT_BATCH_SIZE = 5_000
+MARKET_PROGRESS_INTERVAL = 100_000
 
 
-def main():
+def build_pick_rows(
+    fixture_id: int,
+    markets: list[PredictionMarket],
+    created_at: datetime,
+) -> list[dict]:
+
+    ranked_markets = MarketRanker.rank(
+        markets,
+        limit=PICKS_PER_FIXTURE,
+    )
+
+    return [
+        {
+            "fixture_id": fixture_id,
+            "market_id": item["market"].id,
+            "rank": rank,
+            "score": item["score"],
+            "grade": item["grade"],
+            "created_at": created_at,
+        }
+        for rank, item in enumerate(
+            ranked_markets,
+            start=1,
+        )
+    ]
+
+
+def main() -> None:
 
     db = SessionLocal()
 
@@ -29,8 +63,6 @@ def main():
         db.query(PredictionPick).delete(
             synchronize_session=False
         )
-
-        db.commit()
 
         team_stats = {
             row.team_id: row
@@ -64,23 +96,17 @@ def main():
             fixture_predictions
         )
 
-        eligible_fixtures = 0
+        eligible_fixture_ids: set[int] = set()
+
         skipped_confidence = 0
         skipped_data_quality = 0
-        created_picks = 0
 
         print(
             f"Checking {total_fixtures} "
             f"fixtures..."
         )
 
-        for index, (
-            fixture,
-            prediction,
-        ) in enumerate(
-            fixture_predictions,
-            start=1,
-        ):
+        for fixture, prediction in fixture_predictions:
 
             if not PredictionQualityGate.passes(
                 prediction
@@ -105,49 +131,128 @@ def main():
                 skipped_data_quality += 1
                 continue
 
-            eligible_fixtures += 1
+            eligible_fixture_ids.add(
+                fixture.id
+            )
 
-            markets = (
-                db.query(PredictionMarket)
-                .filter(
-                    PredictionMarket.fixture_id
-                    == fixture.id
+        print(
+            "Eligible fixtures: "
+            f"{len(eligible_fixture_ids)}"
+        )
+
+        print(
+            "Streaming prediction markets..."
+        )
+
+        market_query = (
+            db.query(PredictionMarket)
+            .order_by(
+                PredictionMarket.fixture_id.asc(),
+                PredictionMarket.id.asc(),
+            )
+            .yield_per(
+                MARKET_STREAM_BATCH_SIZE
+            )
+        )
+
+        created_at = datetime.utcnow()
+
+        pick_rows: list[dict] = []
+
+        current_fixture_id: int | None = None
+
+        current_markets: list[
+            PredictionMarket
+        ] = []
+
+        processed_markets = 0
+
+        for market in market_query:
+
+            processed_markets += 1
+
+            if (
+                processed_markets
+                % MARKET_PROGRESS_INTERVAL
+                == 0
+            ):
+                print(
+                    f"{processed_markets} "
+                    "markets processed"
                 )
-                .all()
-            )
 
-            ranked_markets = MarketRanker.rank(
-                markets,
-                limit=PICKS_PER_FIXTURE,
-            )
+            if (
+                market.fixture_id
+                not in eligible_fixture_ids
+            ):
+                continue
 
-            for rank, item in enumerate(
-                ranked_markets,
-                start=1,
+            if current_fixture_id is None:
+
+                current_fixture_id = (
+                    market.fixture_id
+                )
+
+            elif (
+                market.fixture_id
+                != current_fixture_id
             ):
 
-                db.add(
-                    PredictionPick(
-                        fixture_id=fixture.id,
-                        market_id=(
-                            item["market"].id
+                pick_rows.extend(
+                    build_pick_rows(
+                        fixture_id=(
+                            current_fixture_id
                         ),
-                        rank=rank,
-                        score=item["score"],
-                        grade=item["grade"],
+                        markets=current_markets,
+                        created_at=created_at,
                     )
                 )
 
-                created_picks += 1
-
-            if index % 100 == 0:
-
-                db.commit()
-
-                print(
-                    f"{index}/"
-                    f"{total_fixtures} checked"
+                current_fixture_id = (
+                    market.fixture_id
                 )
+
+                current_markets = []
+
+            current_markets.append(
+                market
+            )
+
+        if (
+            current_fixture_id is not None
+            and current_markets
+        ):
+
+            pick_rows.extend(
+                build_pick_rows(
+                    fixture_id=(
+                        current_fixture_id
+                    ),
+                    markets=current_markets,
+                    created_at=created_at,
+                )
+            )
+
+        print(
+            "Inserting prediction picks..."
+        )
+
+        for start_index in range(
+            0,
+            len(pick_rows),
+            INSERT_BATCH_SIZE,
+        ):
+
+            batch = pick_rows[
+                start_index:
+                start_index
+                + INSERT_BATCH_SIZE
+            ]
+
+            db.execute(
+                insert(PredictionPick),
+                batch,
+            )
 
         db.commit()
 
@@ -156,36 +261,45 @@ def main():
             .count()
         )
 
-        print("\nDATA-QUALITY-GATED PICKS")
+        print()
+        print(
+            "DATA-QUALITY-GATED PICKS"
+        )
+
         print("-" * 60)
 
         print(
-            f"Total fixtures: "
+            "Total fixtures: "
             f"{total_fixtures}"
         )
 
         print(
-            f"Eligible fixtures: "
-            f"{eligible_fixtures}"
+            "Eligible fixtures: "
+            f"{len(eligible_fixture_ids)}"
         )
 
         print(
-            f"Skipped by confidence: "
+            "Skipped by confidence: "
             f"{skipped_confidence}"
         )
 
         print(
-            f"Skipped by data quality: "
+            "Skipped by data quality: "
             f"{skipped_data_quality}"
         )
 
         print(
-            f"Picks created: "
-            f"{created_picks}"
+            "Markets processed: "
+            f"{processed_markets}"
         )
 
         print(
-            f"Database picks: "
+            "Picks created: "
+            f"{len(pick_rows)}"
+        )
+
+        print(
+            "Database picks: "
             f"{database_pick_count}"
         )
 
