@@ -13,7 +13,9 @@ REQUEST_DELAY_SECONDS = 7
 ERROR_DELAY_SECONDS = 10
 
 
-def parse_datetime(value: str | None):
+def parse_datetime(
+    value: str | None,
+) -> datetime | None:
 
     if not value:
         return None
@@ -46,10 +48,9 @@ def get_full_time_scores(
     )
 
 
-def main():
+def main() -> None:
 
     db = SessionLocal()
-
     provider = FixtureProvider()
 
     competitions_completed = 0
@@ -69,10 +70,55 @@ def main():
             .all()
         )
 
-        for competition in competitions:
+        teams = (
+            db.query(Team)
+            .filter(
+                Team.external_id.is_not(None)
+            )
+            .all()
+        )
+
+        teams_by_external_id = {
+            team.external_id: team
+            for team in teams
+        }
+
+        existing_fixtures = (
+            db.query(Fixture)
+            .filter(
+                Fixture.api_fixture_id.is_not(None)
+            )
+            .all()
+        )
+
+        fixtures_by_api_id = {
+            fixture.api_fixture_id: fixture
+            for fixture in existing_fixtures
+        }
+
+        print(
+            "Preloaded teams: "
+            f"{len(teams_by_external_id)}"
+        )
+
+        print(
+            "Preloaded fixtures: "
+            f"{len(fixtures_by_api_id)}"
+        )
+
+        total_competitions = len(
+            competitions
+        )
+
+        for competition_index, competition in enumerate(
+            competitions,
+            start=1,
+        ):
 
             print()
             print(
+                f"[{competition_index}/"
+                f"{total_competitions}] "
                 "Importing fixtures for "
                 f"{competition.name}..."
             )
@@ -90,6 +136,8 @@ def main():
                 competition_created = 0
                 competition_updated = 0
                 competition_skipped = 0
+
+                refresh_time = datetime.utcnow()
 
                 for match in matches:
 
@@ -124,29 +172,18 @@ def main():
                         fixtures_skipped += 1
                         competition_skipped += 1
 
-                        print(
-                            "Skipping incomplete match "
-                            f"record: {api_fixture_id}"
-                        )
-
                         continue
 
                     home_team = (
-                        db.query(Team)
-                        .filter(
-                            Team.external_id
-                            == home_external_id
+                        teams_by_external_id.get(
+                            home_external_id
                         )
-                        .first()
                     )
 
                     away_team = (
-                        db.query(Team)
-                        .filter(
-                            Team.external_id
-                            == away_external_id
+                        teams_by_external_id.get(
+                            away_external_id
                         )
-                        .first()
                     )
 
                     if (
@@ -156,15 +193,6 @@ def main():
 
                         fixtures_skipped += 1
                         competition_skipped += 1
-
-                        print(
-                            f"Skipping match "
-                            f"{api_fixture_id} - "
-                            f"home="
-                            f"{home_team_data.get('name')} "
-                            f"away="
-                            f"{away_team_data.get('name')}"
-                        )
 
                         continue
 
@@ -216,12 +244,9 @@ def main():
                     }
 
                     existing_fixture = (
-                        db.query(Fixture)
-                        .filter(
-                            Fixture.api_fixture_id
-                            == api_fixture_id
+                        fixtures_by_api_id.get(
+                            api_fixture_id
                         )
-                        .first()
                     )
 
                     if existing_fixture is None:
@@ -230,10 +255,15 @@ def main():
                             api_fixture_id=(
                                 api_fixture_id
                             ),
+                            updated_at=refresh_time,
                             **fixture_values,
                         )
 
                         db.add(fixture)
+
+                        fixtures_by_api_id[
+                            api_fixture_id
+                        ] = fixture
 
                         fixtures_created += 1
                         competition_created += 1
@@ -252,7 +282,7 @@ def main():
                             )
 
                         existing_fixture.updated_at = (
-                            datetime.utcnow()
+                            refresh_time
                         )
 
                         fixtures_updated += 1
@@ -277,11 +307,13 @@ def main():
                     f"{competition_skipped}"
                 )
 
-                print("Finished.")
-
-                time.sleep(
-                    REQUEST_DELAY_SECONDS
-                )
+                if (
+                    competition_index
+                    < total_competitions
+                ):
+                    time.sleep(
+                        REQUEST_DELAY_SECONDS
+                    )
 
             except Exception as error:
 
@@ -332,14 +364,11 @@ def main():
         )
 
         if competitions_failed > 0:
-
             raise SystemExit(1)
 
     finally:
-
         db.close()
 
 
 if __name__ == "__main__":
     main()
-
