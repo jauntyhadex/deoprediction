@@ -8,6 +8,11 @@ class Settings(BaseSettings):
     environment: str = "development"
     default_timezone: str = "Africa/Lagos"
 
+    # Authentication
+    auth_secret_key: str
+    auth_algorithm: str = "HS256"
+    access_token_expire_minutes: int = 1440
+
     # Database
     database_url: str
     database_echo: bool = False

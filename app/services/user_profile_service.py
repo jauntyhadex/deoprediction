@@ -29,6 +29,24 @@ class UserProfileService:
             .first()
         )
 
+    def get_by_email(
+        self,
+        email: str,
+    ) -> UserProfile | None:
+
+        normalized_email = (
+            email.strip().lower()
+        )
+
+        return (
+            self.db.query(UserProfile)
+            .filter(
+                UserProfile.email
+                == normalized_email
+            )
+            .first()
+        )
+
     def get_by_telegram_user_id(
         self,
         telegram_user_id: int,
@@ -46,6 +64,7 @@ class UserProfileService:
     def create(
         self,
         email: str | None = None,
+        password_hash: str | None = None,
         telegram_user_id: int | None = None,
         display_name: str | None = None,
         timezone_name: str | None = None,
@@ -65,6 +84,7 @@ class UserProfileService:
 
         profile = UserProfile(
             email=normalized_email,
+            password_hash=password_hash,
             telegram_user_id=(
                 telegram_user_id
             ),

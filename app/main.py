@@ -1,5 +1,9 @@
 from fastapi import FastAPI
 
+from app.api.routes.auth import (
+    router as auth_router,
+)
+
 from app.database import model_loader
 from app.api.routes.prediction_picks import (
     router as prediction_picks_router,
@@ -29,6 +33,10 @@ app.include_router(
 
 app.include_router(
     timezones_router
+)
+
+app.include_router(
+    auth_router
 )
 
 

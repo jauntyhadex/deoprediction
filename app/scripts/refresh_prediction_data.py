@@ -20,6 +20,10 @@ STEPS = [
         "Run API smoke test",
         "app.scripts.check_api",
     ),
+    (
+        "Run authentication smoke test",
+        "app.scripts.check_auth",
+    ),
 ]
 
 
