@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 from fastapi import (
     APIRouter,
     Depends,
@@ -15,6 +17,9 @@ from app.services.prediction_market_service import (
 )
 from app.services.prediction_pick_service import (
     PredictionPickService,
+)
+from app.utils.datetime_utils import (
+    to_utc_iso,
 )
 
 
@@ -69,6 +74,59 @@ def validate_competition_status(
     return normalized_status
 
 
+def validate_date_range(
+    date_from: datetime | None,
+    date_to: datetime | None,
+) -> tuple[
+    datetime | None,
+    datetime | None,
+]:
+
+    def normalize(
+        value: datetime | None,
+    ) -> datetime | None:
+
+        if value is None:
+            return None
+
+        if value.tzinfo is None:
+            return value
+
+        return value.astimezone(
+            UTC
+        ).replace(
+            tzinfo=None
+        )
+
+    normalized_from = normalize(
+        date_from
+    )
+
+    normalized_to = normalize(
+        date_to
+    )
+
+    if (
+        normalized_from is not None
+        and normalized_to is not None
+        and normalized_to
+        < normalized_from
+    ):
+
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "date_to must be greater "
+                "than or equal to date_from."
+            ),
+        )
+
+    return (
+        normalized_from,
+        normalized_to,
+    )
+
+
 @router.get("/top")
 def get_top_prediction_picks(
     limit: int = Query(
@@ -86,6 +144,22 @@ def get_top_prediction_picks(
         default=30,
         ge=1,
         le=730,
+    ),
+    date_from: datetime | None = Query(
+        default=None,
+        description=(
+            "Inclusive kickoff lower bound. "
+            "Timezone-aware ISO timestamps "
+            "are converted to UTC."
+        ),
+    ),
+    date_to: datetime | None = Query(
+        default=None,
+        description=(
+            "Inclusive kickoff upper bound. "
+            "Timezone-aware ISO timestamps "
+            "are converted to UTC."
+        ),
     ),
     competition_id: int | None = Query(
         default=None,
@@ -133,6 +207,14 @@ def get_top_prediction_picks(
             ),
         )
 
+    (
+        normalized_date_from,
+        normalized_date_to,
+    ) = validate_date_range(
+        date_from=date_from,
+        date_to=date_to,
+    )
+
     normalized_status = (
         validate_competition_status(
             competition_status
@@ -146,6 +228,8 @@ def get_top_prediction_picks(
         minimum_grade=minimum_grade,
         upcoming_only=upcoming_only,
         days_ahead=days_ahead,
+        date_from=normalized_date_from,
+        date_to=normalized_date_to,
         competition_id=competition_id,
         competition_status=(
             normalized_status
@@ -162,6 +246,12 @@ def get_top_prediction_picks(
         "filters": {
             "upcoming_only": upcoming_only,
             "days_ahead": days_ahead,
+            "date_from": to_utc_iso(
+                normalized_date_from
+            ),
+            "date_to": to_utc_iso(
+                normalized_date_to
+            ),
             "competition_id": competition_id,
             "competition_status": (
                 normalized_status
@@ -199,6 +289,22 @@ def get_top_prediction_markets(
         default=30,
         ge=1,
         le=730,
+    ),
+    date_from: datetime | None = Query(
+        default=None,
+        description=(
+            "Inclusive kickoff lower bound. "
+            "Timezone-aware ISO timestamps "
+            "are converted to UTC."
+        ),
+    ),
+    date_to: datetime | None = Query(
+        default=None,
+        description=(
+            "Inclusive kickoff upper bound. "
+            "Timezone-aware ISO timestamps "
+            "are converted to UTC."
+        ),
     ),
     competition_id: int | None = Query(
         default=None,
@@ -254,6 +360,14 @@ def get_top_prediction_markets(
             ),
         )
 
+    (
+        normalized_date_from,
+        normalized_date_to,
+    ) = validate_date_range(
+        date_from=date_from,
+        date_to=date_to,
+    )
+
     normalized_status = (
         validate_competition_status(
             competition_status
@@ -266,6 +380,8 @@ def get_top_prediction_markets(
         limit=limit,
         upcoming_only=upcoming_only,
         days_ahead=days_ahead,
+        date_from=normalized_date_from,
+        date_to=normalized_date_to,
         competition_id=competition_id,
         competition_status=(
             normalized_status
@@ -286,6 +402,12 @@ def get_top_prediction_markets(
         "filters": {
             "upcoming_only": upcoming_only,
             "days_ahead": days_ahead,
+            "date_from": to_utc_iso(
+                normalized_date_from
+            ),
+            "date_to": to_utc_iso(
+                normalized_date_to
+            ),
             "competition_id": competition_id,
             "competition_status": (
                 normalized_status

@@ -28,6 +28,10 @@ STEPS = [
         "Run public guest access test",
         "app.scripts.check_public_access",
     ),
+    (
+        "Run prediction date filter test",
+        "app.scripts.check_prediction_date_filters",
+    ),
 ]
 
 

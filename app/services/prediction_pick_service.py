@@ -109,6 +109,8 @@ class PredictionPickService:
         minimum_grade: str | None = None,
         upcoming_only: bool = True,
         days_ahead: int | None = 30,
+        date_from: datetime | None = None,
+        date_to: datetime | None = None,
         competition_id: int | None = None,
         competition_status: str | None = None,
         market_type: str | None = None,
@@ -186,6 +188,20 @@ class PredictionPickService:
                     Fixture.kickoff_time
                     <= maximum_date
                 )
+
+        if date_from is not None:
+
+            query = query.filter(
+                Fixture.kickoff_time
+                >= date_from
+            )
+
+        if date_to is not None:
+
+            query = query.filter(
+                Fixture.kickoff_time
+                <= date_to
+            )
 
         if competition_id is not None:
 
