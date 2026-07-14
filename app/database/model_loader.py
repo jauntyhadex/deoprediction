@@ -15,3 +15,4 @@ from app.models.team_power_rating import TeamPowerRating
 from app.models.team_rating import TeamRating
 from app.models.team_stat import TeamStat
 from app.models.walk_forward_evaluation import WalkForwardEvaluation
+from app.models.user_profile import UserProfile
