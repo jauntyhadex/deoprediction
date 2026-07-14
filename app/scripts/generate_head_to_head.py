@@ -1,100 +1,183 @@
+from collections import defaultdict
+from datetime import datetime
+
+from sqlalchemy import insert
+
+from app.database import model_loader
 from app.database.connection import SessionLocal
 from app.models.fixture import Fixture
-from app.services.head_to_head_service import HeadToHeadService
+from app.models.head_to_head import HeadToHead
 
 
-def main():
+def main() -> None:
 
     db = SessionLocal()
 
-    service = HeadToHeadService(db)
+    try:
 
-    fixtures = (
-        db.query(Fixture)
-        .filter(Fixture.status == "FINISHED")
-        .all()
-    )
-
-    print(f"Processing {len(fixtures)} fixtures...")
-
-    pairs = {}
-
-    for match in fixtures:
-
-        key = (
-            match.home_team_id,
-            match.away_team_id,
+        fixtures = (
+            db.query(Fixture)
+            .filter(
+                Fixture.status == "FINISHED",
+                Fixture.home_score.is_not(None),
+                Fixture.away_score.is_not(None),
+            )
+            .order_by(
+                Fixture.kickoff_time.asc()
+            )
+            .all()
         )
 
-        if key not in pairs:
-            pairs[key] = []
+        print(
+            f"Processing {len(fixtures)} fixtures..."
+        )
 
-        pairs[key].append(match)
+        pair_stats = defaultdict(
+            lambda: {
+                "matches_played": 0,
+                "home_wins": 0,
+                "draws": 0,
+                "away_wins": 0,
+                "home_goals": 0,
+                "away_goals": 0,
+                "btts": 0,
+                "over25": 0,
+            }
+        )
 
-    for (home_team_id, away_team_id), matches in pairs.items():
+        for fixture in fixtures:
 
-        matches_played = len(matches)
+            key = (
+                fixture.home_team_id,
+                fixture.away_team_id,
+            )
 
-        home_wins = 0
-        draws = 0
-        away_wins = 0
+            stats = pair_stats[key]
 
-        home_goals = 0
-        away_goals = 0
+            home_score = int(
+                fixture.home_score
+            )
 
-        btts = 0
-        over25 = 0
+            away_score = int(
+                fixture.away_score
+            )
 
-        for match in matches:
+            stats["matches_played"] += 1
+            stats["home_goals"] += home_score
+            stats["away_goals"] += away_score
 
-            if match.home_score is None or match.away_score is None:
-                continue
-
-            home_goals += match.home_score
-            away_goals += match.away_score
-
-            if match.home_score > match.away_score:
-                home_wins += 1
-
-            elif match.home_score < match.away_score:
-                away_wins += 1
-
+            if home_score > away_score:
+                stats["home_wins"] += 1
+            elif home_score < away_score:
+                stats["away_wins"] += 1
             else:
-                draws += 1
+                stats["draws"] += 1
 
-            if match.home_score > 0 and match.away_score > 0:
-                btts += 1
+            if (
+                home_score > 0
+                and away_score > 0
+            ):
+                stats["btts"] += 1
 
-            if (match.home_score + match.away_score) > 2:
-                over25 += 1
+            if (
+                home_score + away_score
+                > 2
+            ):
+                stats["over25"] += 1
 
-        service.create_or_update(
-            home_team_id=home_team_id,
-            away_team_id=away_team_id,
-            matches_played=matches_played,
-            home_wins=home_wins,
-            draws=draws,
-            away_wins=away_wins,
-            home_goals=home_goals,
-            away_goals=away_goals,
-            average_goals=(
-                (home_goals + away_goals) / matches_played
-                if matches_played else 0
-            ),
-            btts_rate=(
-                btts / matches_played
-                if matches_played else 0
-            ),
-            over25_rate=(
-                over25 / matches_played
-                if matches_played else 0
-            ),
+        created_at = datetime.utcnow()
+        rows = []
+
+        for (
+            home_team_id,
+            away_team_id,
+        ), stats in pair_stats.items():
+
+            matches_played = stats[
+                "matches_played"
+            ]
+
+            rows.append(
+                {
+                    "home_team_id": (
+                        home_team_id
+                    ),
+                    "away_team_id": (
+                        away_team_id
+                    ),
+                    "matches_played": (
+                        matches_played
+                    ),
+                    "home_wins": (
+                        stats["home_wins"]
+                    ),
+                    "draws": (
+                        stats["draws"]
+                    ),
+                    "away_wins": (
+                        stats["away_wins"]
+                    ),
+                    "home_goals": (
+                        stats["home_goals"]
+                    ),
+                    "away_goals": (
+                        stats["away_goals"]
+                    ),
+                    "average_goals": (
+                        (
+                            stats["home_goals"]
+                            + stats["away_goals"]
+                        )
+                        / matches_played
+                    ),
+                    "btts_rate": (
+                        stats["btts"]
+                        / matches_played
+                    ),
+                    "over25_rate": (
+                        stats["over25"]
+                        / matches_played
+                    ),
+                    "created_at": created_at,
+                }
+            )
+
+        db.query(HeadToHead).delete(
+            synchronize_session=False
         )
 
-    db.close()
+        if rows:
+            db.execute(
+                insert(HeadToHead),
+                rows,
+            )
 
-    print("Finished!")
-    
+        db.commit()
+
+        database_count = (
+            db.query(HeadToHead)
+            .count()
+        )
+
+        print(
+            f"Pairs created: {len(rows)}"
+        )
+
+        print(
+            f"Database pairs: {database_count}"
+        )
+
+        print("Finished!")
+
+    except Exception:
+
+        db.rollback()
+        raise
+
+    finally:
+
+        db.close()
+
 
 if __name__ == "__main__":
     main()
