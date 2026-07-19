@@ -1,5 +1,9 @@
 from fastapi import FastAPI
 
+from app.api.routes.markets import (
+    router as markets_router,
+)
+
 from app.api.routes.teams import (
     router as teams_router,
 )
@@ -57,6 +61,10 @@ app.include_router(
 
 app.include_router(
     teams_router
+)
+
+app.include_router(
+    markets_router
 )
 
 app.include_router(

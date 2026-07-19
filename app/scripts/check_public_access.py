@@ -19,6 +19,7 @@ PUBLIC_ENDPOINTS = (
     "/system/status",
     "/fixtures?limit=1&upcoming_only=false",
     "/teams?limit=1",
+    "/markets/catalog",
     "/prediction-picks/top?limit=1",
     "/prediction-picks/markets/top?limit=1",
     "/timezones?search=Lagos&limit=5",
