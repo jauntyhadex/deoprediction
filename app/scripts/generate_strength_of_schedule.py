@@ -1,3 +1,4 @@
+from app.database import model_loader
 from collections import defaultdict
 
 from app.models.team import Team

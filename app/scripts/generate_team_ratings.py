@@ -1,3 +1,4 @@
+from app.database import model_loader
 from app.database.connection import SessionLocal
 from app.models.team_stat import TeamStat
 from app.services.team_rating_service import TeamRatingService

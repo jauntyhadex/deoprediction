@@ -1,3 +1,4 @@
+from app.database import model_loader
 from app.database.connection import SessionLocal
 from app.models.fixture import Fixture
 from app.models.team import Team
