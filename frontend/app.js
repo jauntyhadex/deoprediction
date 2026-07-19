@@ -8,12 +8,33 @@ function lineValue(value) {
   return value ?? "";
 }
 
+function pickCard(pick) {
+  return `
+    <article class="card">
+      <div class="row">
+        <h3>${pick.home_team} vs ${pick.away_team}</h3>
+        <span class="badge">${pick.grade}</span>
+      </div>
+      <p class="muted">${pick.competition_name} · ${localTime(pick.kickoff_time)}</p>
+      <p><strong>${pick.market_type}</strong>: ${pick.selection} ${lineValue(pick.line)}</p>
+      <p>Probability: <strong>${pick.probability}%</strong> · Confidence: <strong>${pick.confidence}%</strong></p>
+      <p>Fair odds: <strong>${pick.fair_odds}</strong> · Score: <strong>${pick.score}</strong></p>
+      <p class="muted">Competition status: ${pick.competition_status}</p>
+    </article>
+  `;
+}
+
 function showPage(page) {
   document.getElementById("home-page").classList.toggle("hidden", page !== "home");
   document.getElementById("fixtures-page").classList.toggle("hidden", page !== "fixtures");
+  document.getElementById("picks-page").classList.toggle("hidden", page !== "picks");
 
   if (page === "fixtures") {
     loadFixtures();
+  }
+
+  if (page === "picks") {
+    loadPicks();
   }
 }
 
@@ -37,19 +58,8 @@ async function loadHome() {
       </div>
     `;
 
-    document.getElementById("picks").innerHTML =
-      data.top_picks.picks.map((pick) => `
-        <article class="card">
-          <div class="row">
-            <h3>${pick.home_team} vs ${pick.away_team}</h3>
-            <span class="badge">${pick.grade}</span>
-          </div>
-          <p class="muted">${pick.competition_name} · ${localTime(pick.kickoff_time)}</p>
-          <p><strong>${pick.market_type}</strong>: ${pick.selection} ${lineValue(pick.line)}</p>
-          <p>Probability: <strong>${pick.probability}%</strong> · Confidence: <strong>${pick.confidence}%</strong></p>
-          <p class="muted">Competition status: ${pick.competition_status}</p>
-        </article>
-      `).join("");
+    document.getElementById("home-picks").innerHTML =
+      data.top_picks.picks.map(pickCard).join("");
 
   } catch (error) {
     status.textContent = "Backend not connected. Start the API server.";
@@ -86,6 +96,32 @@ async function loadFixtures() {
         <p>${localTime(fixture.kickoff_time)}</p>
       </article>
     `).join("");
+}
+
+async function loadPicks() {
+  const grade = document.getElementById("pick-grade").value;
+  const market = document.getElementById("pick-market").value;
+  const onePerFixture = document.getElementById("one-pick-per-fixture").checked;
+
+  const params = new URLSearchParams({
+    limit: "20",
+    upcoming_only: "true",
+    one_per_fixture: String(onePerFixture),
+  });
+
+  if (grade) {
+    params.set("minimum_grade", grade);
+  }
+
+  if (market) {
+    params.set("market_type", market);
+  }
+
+  const response = await fetch(`${API}/prediction-picks/top?${params.toString()}`);
+  const data = await response.json();
+
+  document.getElementById("picks").innerHTML =
+    data.picks.map(pickCard).join("");
 }
 
 loadHome();

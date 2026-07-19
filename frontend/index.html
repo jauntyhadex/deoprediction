@@ -13,6 +13,7 @@
       <nav>
         <button onclick="showPage('home')">Home</button>
         <button onclick="showPage('fixtures')">Fixtures</button>
+        <button onclick="showPage('picks')">Top Picks</button>
       </nav>
     </div>
 
@@ -21,7 +22,7 @@
       <div id="counts"></div>
 
       <h2>Top Picks</h2>
-      <div id="picks"></div>
+      <div id="home-picks"></div>
     </section>
 
     <section id="fixtures-page" class="hidden">
@@ -47,6 +48,41 @@
       </div>
 
       <div id="fixtures"></div>
+    </section>
+
+    <section id="picks-page" class="hidden">
+      <h2>Top Picks</h2>
+
+      <div class="filters">
+        <select id="pick-grade">
+          <option value="">Any grade</option>
+          <option value="A+">A+</option>
+          <option value="A">A</option>
+          <option value="B">B</option>
+          <option value="C">C</option>
+        </select>
+
+        <select id="pick-market">
+          <option value="">Any market</option>
+          <option value="MATCH_RESULT">Match Result</option>
+          <option value="TOTAL_GOALS">Total Goals</option>
+          <option value="BTTS">BTTS</option>
+          <option value="ASIAN_HANDICAP">Asian Handicap</option>
+          <option value="DOUBLE_CHANCE">Double Chance</option>
+          <option value="DRAW_NO_BET">Draw No Bet</option>
+          <option value="FIRST_HALF_TOTAL_GOALS">First Half Total Goals</option>
+          <option value="SECOND_HALF_TOTAL_GOALS">Second Half Total Goals</option>
+        </select>
+
+        <label>
+          <input id="one-pick-per-fixture" type="checkbox" checked />
+          One per fixture
+        </label>
+
+        <button onclick="loadPicks()">Load picks</button>
+      </div>
+
+      <div id="picks"></div>
     </section>
   </main>
 
