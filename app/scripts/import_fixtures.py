@@ -14,6 +14,52 @@ from app.providers.football.fixture_provider import FixtureProvider
 
 REQUEST_DELAY_SECONDS = 7
 ERROR_DELAY_SECONDS = 10
+MAX_REQUEST_ATTEMPTS = 3
+RETRY_DELAY_SECONDS = 15
+
+
+def get_matches_with_retry(
+    provider: FixtureProvider,
+    competition_code: str,
+) -> list[dict]:
+
+    last_error: Exception | None = None
+
+    for attempt in range(
+        1,
+        MAX_REQUEST_ATTEMPTS + 1,
+    ):
+
+        try:
+
+            return provider.get_matches(
+                competition_code
+            )
+
+        except Exception as error:
+
+            last_error = error
+
+            print(
+                "Attempt "
+                f"{attempt}/"
+                f"{MAX_REQUEST_ATTEMPTS} "
+                "failed for "
+                f"{competition_code}: "
+                f"{error}"
+            )
+
+            if (
+                attempt
+                < MAX_REQUEST_ATTEMPTS
+            ):
+
+                time.sleep(
+                    RETRY_DELAY_SECONDS
+                )
+
+    assert last_error is not None
+    raise last_error
 
 
 def parse_datetime(
@@ -128,8 +174,9 @@ def main() -> None:
 
             try:
 
-                matches = provider.get_matches(
-                    competition.code
+                matches = get_matches_with_retry(
+                    provider,
+                    competition.code,
                 )
 
                 print(
