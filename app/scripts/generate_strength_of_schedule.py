@@ -10,6 +10,21 @@ from app.services.strength_of_schedule_service import (
 )
 
 
+def safe_console_text(
+    value: object,
+) -> str:
+
+    return (
+        str(value)
+        .encode(
+            "ascii",
+            errors="replace",
+        )
+        .decode("ascii")
+    )
+
+
+
 def main():
 
     db = SessionLocal()

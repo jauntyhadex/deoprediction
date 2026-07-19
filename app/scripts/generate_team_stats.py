@@ -5,6 +5,21 @@ from app.models.team import Team
 from app.services.team_stat_service import TeamStatService
 
 
+def safe_console_text(
+    value: object,
+) -> str:
+
+    return (
+        str(value)
+        .encode(
+            "ascii",
+            errors="replace",
+        )
+        .decode("ascii")
+    )
+
+
+
 def main():
     db = SessionLocal()
 
@@ -93,7 +108,7 @@ def main():
             loss_rate=loss_rate,
         )
 
-        print(f"{team.name} OK")
+        print(f"{safe_console_text(team.name)} OK")
 
     db.close()
 

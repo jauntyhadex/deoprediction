@@ -4,6 +4,21 @@ from app.models.team_stat import TeamStat
 from app.services.team_rating_service import TeamRatingService
 
 
+def safe_console_text(
+    value: object,
+) -> str:
+
+    return (
+        str(value)
+        .encode(
+            "ascii",
+            errors="replace",
+        )
+        .decode("ascii")
+    )
+
+
+
 def main():
 
     db = SessionLocal()

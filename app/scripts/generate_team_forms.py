@@ -5,6 +5,21 @@ from app.models.team import Team
 from app.services.team_form_service import TeamFormService
 
 
+def safe_console_text(
+    value: object,
+) -> str:
+
+    return (
+        str(value)
+        .encode(
+            "ascii",
+            errors="replace",
+        )
+        .decode("ascii")
+    )
+
+
+
 def main():
 
     db = SessionLocal()

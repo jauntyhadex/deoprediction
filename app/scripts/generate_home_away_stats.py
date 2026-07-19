@@ -7,6 +7,21 @@ from app.services.team_home_away_stats_service import (
 )
 
 
+def safe_console_text(
+    value: object,
+) -> str:
+
+    return (
+        str(value)
+        .encode(
+            "ascii",
+            errors="replace",
+        )
+        .decode("ascii")
+    )
+
+
+
 def main():
 
     db = SessionLocal()
