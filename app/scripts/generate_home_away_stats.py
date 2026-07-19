@@ -119,7 +119,7 @@ def main():
             ),
         )
 
-        print(team.name)
+        print(safe_console_text(team.name))
 
     db.close()
 
