@@ -24,10 +24,28 @@ function pickCard(pick) {
   `;
 }
 
+function marketCard(market) {
+  return `
+    <article class="card">
+      <div class="row">
+        <h3>${market.home_team} vs ${market.away_team}</h3>
+        <span class="badge">${market.grade}</span>
+      </div>
+      <p class="muted">${market.competition_name} · ${localTime(market.kickoff_time)}</p>
+      <p><strong>${market.market_type}</strong>: ${market.selection} ${lineValue(market.line)}</p>
+      <p>Probability: <strong>${market.probability}%</strong> · Market confidence: <strong>${market.market_confidence}%</strong></p>
+      <p>Fair odds: <strong>${market.fair_odds}</strong> · Score: <strong>${market.score}</strong></p>
+      <p>Fixture lean: <strong>${market.fixture_result}</strong> · Gate: <strong>${market.quality_gate}</strong></p>
+      <p class="muted">Competition status: ${market.competition_status}</p>
+    </article>
+  `;
+}
+
 function showPage(page) {
   document.getElementById("home-page").classList.toggle("hidden", page !== "home");
   document.getElementById("fixtures-page").classList.toggle("hidden", page !== "fixtures");
   document.getElementById("picks-page").classList.toggle("hidden", page !== "picks");
+  document.getElementById("markets-page").classList.toggle("hidden", page !== "markets");
 
   if (page === "fixtures") {
     loadFixtures();
@@ -35,6 +53,10 @@ function showPage(page) {
 
   if (page === "picks") {
     loadPicks();
+  }
+
+  if (page === "markets") {
+    loadMarkets();
   }
 }
 
@@ -122,6 +144,25 @@ async function loadPicks() {
 
   document.getElementById("picks").innerHTML =
     data.picks.map(pickCard).join("");
+}
+
+async function loadMarkets() {
+  const market = document.getElementById("market-filter").value;
+
+  const params = new URLSearchParams({
+    limit: "20",
+    upcoming_only: "true",
+  });
+
+  if (market) {
+    params.set("market_type", market);
+  }
+
+  const response = await fetch(`${API}/prediction-picks/markets/top?${params.toString()}`);
+  const data = await response.json();
+
+  document.getElementById("markets").innerHTML =
+    data.markets.map(marketCard).join("");
 }
 
 loadHome();

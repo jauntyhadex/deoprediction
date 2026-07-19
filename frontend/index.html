@@ -14,6 +14,7 @@
         <button onclick="showPage('home')">Home</button>
         <button onclick="showPage('fixtures')">Fixtures</button>
         <button onclick="showPage('picks')">Top Picks</button>
+        <button onclick="showPage('markets')">Top Markets</button>
       </nav>
     </div>
 
@@ -83,6 +84,30 @@
       </div>
 
       <div id="picks"></div>
+    </section>
+
+    <section id="markets-page" class="hidden">
+      <h2>Top Markets</h2>
+
+      <div class="filters">
+        <select id="market-filter">
+          <option value="">Any market</option>
+          <option value="MATCH_RESULT">Match Result</option>
+          <option value="TOTAL_GOALS">Total Goals</option>
+          <option value="BTTS">BTTS</option>
+          <option value="ASIAN_HANDICAP">Asian Handicap</option>
+          <option value="DOUBLE_CHANCE">Double Chance</option>
+          <option value="DRAW_NO_BET">Draw No Bet</option>
+          <option value="FIRST_HALF_TOTAL_GOALS">First Half Total Goals</option>
+          <option value="SECOND_HALF_TOTAL_GOALS">Second Half Total Goals</option>
+          <option value="HOME_TEAM_TOTAL">Home Team Total</option>
+          <option value="AWAY_TEAM_TOTAL">Away Team Total</option>
+        </select>
+
+        <button onclick="loadMarkets()">Load markets</button>
+      </div>
+
+      <div id="markets"></div>
     </section>
   </main>
 
