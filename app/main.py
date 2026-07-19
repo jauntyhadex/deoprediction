@@ -1,5 +1,9 @@
 from fastapi import FastAPI
 
+from app.api.routes.discovery import (
+    router as discovery_router,
+)
+
 from app.api.routes.markets import (
     router as markets_router,
 )
@@ -65,6 +69,10 @@ app.include_router(
 
 app.include_router(
     markets_router
+)
+
+app.include_router(
+    discovery_router
 )
 
 app.include_router(

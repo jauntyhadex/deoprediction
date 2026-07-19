@@ -52,6 +52,10 @@ STEPS = [
         "Run market catalog test",
         "app.scripts.check_market_catalog",
     ),
+    (
+        "Run discovery API test",
+        "app.scripts.check_discovery",
+    ),
 ]
 
 
