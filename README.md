@@ -221,3 +221,15 @@ GET /prediction-picks/top
 GET /prediction-picks/markets/top
 GET /timezones
 GET /timezones/convert
+
+## Frontend prototype
+
+Start backend:
+python -m uvicorn app.main:app --reload
+
+Start frontend:
+cd frontend
+python -m http.server 5500
+
+Open:
+http://127.0.0.1:5500
