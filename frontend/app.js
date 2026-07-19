@@ -4,8 +4,17 @@ function localTime(value) {
   return new Date(value).toLocaleString();
 }
 
-function money(value) {
+function lineValue(value) {
   return value ?? "";
+}
+
+function showPage(page) {
+  document.getElementById("home-page").classList.toggle("hidden", page !== "home");
+  document.getElementById("fixtures-page").classList.toggle("hidden", page !== "fixtures");
+
+  if (page === "fixtures") {
+    loadFixtures();
+  }
 }
 
 async function loadHome() {
@@ -36,25 +45,47 @@ async function loadHome() {
             <span class="badge">${pick.grade}</span>
           </div>
           <p class="muted">${pick.competition_name} · ${localTime(pick.kickoff_time)}</p>
-          <p><strong>${pick.market_type}</strong>: ${pick.selection} ${money(pick.line)}</p>
+          <p><strong>${pick.market_type}</strong>: ${pick.selection} ${lineValue(pick.line)}</p>
           <p>Probability: <strong>${pick.probability}%</strong> · Confidence: <strong>${pick.confidence}%</strong></p>
           <p class="muted">Competition status: ${pick.competition_status}</p>
-        </article>
-      `).join("");
-
-    document.getElementById("fixtures").innerHTML =
-      data.upcoming_fixtures.fixtures.map((fixture) => `
-        <article class="card">
-          <h3>${fixture.home_team.name} vs ${fixture.away_team.name}</h3>
-          <p class="muted">${fixture.competition.name}</p>
-          <p>Status: <strong>${fixture.status}</strong></p>
-          <p>${localTime(fixture.kickoff_time)}</p>
         </article>
       `).join("");
 
   } catch (error) {
     status.textContent = "Backend not connected. Start the API server.";
   }
+}
+
+async function loadFixtures() {
+  const search = document.getElementById("fixture-search").value.trim();
+  const status = document.getElementById("fixture-status").value;
+  const upcomingOnly = document.getElementById("upcoming-only").checked;
+
+  const params = new URLSearchParams({
+    limit: "20",
+    upcoming_only: String(upcomingOnly),
+  });
+
+  if (search) {
+    params.set("search", search);
+  }
+
+  if (status) {
+    params.set("status", status);
+  }
+
+  const response = await fetch(`${API}/fixtures?${params.toString()}`);
+  const data = await response.json();
+
+  document.getElementById("fixtures").innerHTML =
+    data.fixtures.map((fixture) => `
+      <article class="card">
+        <h3>${fixture.home_team.name} vs ${fixture.away_team.name}</h3>
+        <p class="muted">${fixture.competition.name}</p>
+        <p>Status: <strong>${fixture.status}</strong></p>
+        <p>${localTime(fixture.kickoff_time)}</p>
+      </article>
+    `).join("");
 }
 
 loadHome();

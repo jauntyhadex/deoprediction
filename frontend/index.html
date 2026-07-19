@@ -7,21 +7,45 @@
 </head>
 <body>
   <main>
-    <h1>DeoPrediction</h1>
-    <p id="status">Loading...</p>
+    <div class="hero">
+      <h1>DeoPrediction</h1>
+      <p id="status">Loading...</p>
+      <nav>
+        <button onclick="showPage('home')">Home</button>
+        <button onclick="showPage('fixtures')">Fixtures</button>
+      </nav>
+    </div>
 
-    <section>
+    <section id="home-page">
       <h2>Database</h2>
       <div id="counts"></div>
-    </section>
 
-    <section>
       <h2>Top Picks</h2>
       <div id="picks"></div>
     </section>
 
-    <section>
-      <h2>Upcoming Fixtures</h2>
+    <section id="fixtures-page" class="hidden">
+      <h2>Fixtures</h2>
+
+      <div class="filters">
+        <input id="fixture-search" placeholder="Search team or competition" />
+        <select id="fixture-status">
+          <option value="">Any status</option>
+          <option value="TIMED">Timed</option>
+          <option value="SCHEDULED">Scheduled</option>
+          <option value="FINISHED">Finished</option>
+          <option value="IN_PLAY">In play</option>
+          <option value="PAUSED">Paused</option>
+          <option value="POSTPONED">Postponed</option>
+          <option value="CANCELLED">Cancelled</option>
+        </select>
+        <label>
+          <input id="upcoming-only" type="checkbox" checked />
+          Upcoming only
+        </label>
+        <button onclick="loadFixtures()">Load fixtures</button>
+      </div>
+
       <div id="fixtures"></div>
     </section>
   </main>
