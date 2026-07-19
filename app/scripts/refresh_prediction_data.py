@@ -56,6 +56,10 @@ STEPS = [
         "Run discovery API test",
         "app.scripts.check_discovery",
     ),
+    (
+        "Run CORS test",
+        "app.scripts.check_cors",
+    ),
 ]
 
 

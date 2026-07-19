@@ -1,4 +1,6 @@
 from fastapi import FastAPI
+from app.config.settings import settings
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes.discovery import (
     router as discovery_router,
@@ -36,12 +38,38 @@ from app.api.routes.timezones import (
 )
 
 
+
+def get_cors_allowed_origins() -> list[str]:
+
+    raw_origins = (
+        settings.cors_allowed_origins
+        or "*"
+    ).strip()
+
+    if raw_origins == "*":
+        return ["*"]
+
+    return [
+        origin.strip()
+        for origin in raw_origins.split(",")
+        if origin.strip()
+    ]
+
+
 app = FastAPI(
     title="DeoPrediction API",
     description="Football and basketball prediction API",
     version="1.0.0",
 )
 
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=get_cors_allowed_origins(),
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(
     prediction_picks_router

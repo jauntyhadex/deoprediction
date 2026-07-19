@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     environment: str = "development"
     default_timezone: str = "Africa/Lagos"
+    cors_allowed_origins: str = "*"
 
     # Authentication
     auth_secret_key: str
