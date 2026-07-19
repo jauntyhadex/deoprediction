@@ -195,3 +195,29 @@ deoprediction.db
 ```
 
 Never publish or paste the real football API key.
+## Current backend status
+
+- Full refresh passes.
+- Prediction pipeline passes.
+- Public guest access works.
+- Optional authentication works.
+- Timezone support works.
+- CORS works.
+- Website and Telegram can use the public API.
+
+Main command:
+./refresh.ps1
+
+Main public endpoints:
+GET /
+GET /health
+GET /system/status
+GET /discovery/home
+GET /competitions
+GET /fixtures
+GET /teams
+GET /markets/catalog
+GET /prediction-picks/top
+GET /prediction-picks/markets/top
+GET /timezones
+GET /timezones/convert
