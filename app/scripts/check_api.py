@@ -94,6 +94,31 @@ def main() -> None:
         path="/system/status",
     )
 
+    check_endpoint(
+        name="Competition catalog endpoint",
+        path="/competitions?limit=1",
+    )
+
+    check_endpoint(
+        name="Fixture catalog endpoint",
+        path="/fixtures?limit=1&upcoming_only=false",
+    )
+
+    check_endpoint(
+        name="Team catalog endpoint",
+        path="/teams?limit=1",
+    )
+
+    check_endpoint(
+        name="Market catalog endpoint",
+        path="/markets/catalog",
+    )
+
+    check_endpoint(
+        name="Discovery home endpoint",
+        path="/discovery/home",
+    )
+
     if (
         status_data.get("database")
         != "connected"
