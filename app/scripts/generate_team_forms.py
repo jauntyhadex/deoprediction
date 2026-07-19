@@ -108,7 +108,7 @@ def main():
             current_unbeaten_streak=unbeaten_streak,
         )
 
-        print(team.name, last_five)
+        print(safe_console_text(team.name), last_five)
 
     db.close()
 
