@@ -72,6 +72,7 @@ function pickCard(pick) {
       <p>Fair odds: <strong>${display(pick.fair_odds)}</strong> - Score: <strong>${display(pick.score)}</strong></p>
       ${oddsWarning(pick.fair_odds)}
       <p class="muted">Competition status: ${display(pick.competition_status)}</p>
+      ${reliabilityWarning(pick.competition_status, pick.competition_status_message)}
     </article>
   `;
 }
@@ -90,8 +91,31 @@ function marketCard(market) {
       ${oddsWarning(market.fair_odds)}
       <p>Fixture lean: <strong>${display(market.fixture_result)}</strong> - Gate: <strong>${display(market.quality_gate)}</strong></p>
       <p class="muted">Competition status: ${display(market.competition_status)}</p>
+      ${reliabilityWarning(market.competition_status, market.competition_status_message)}
     </article>
   `;
+}
+
+function reliabilityWarning(status, message = "") {
+  const value = String(status || "").toUpperCase();
+
+  if (value === "WEAK") {
+    return `<p class="risk-warning">Weak competition history. Prediction is shown, but risk is higher. ${display(message)}</p>`;
+  }
+
+  if (value === "LIMITED" || value === "UNVALIDATED") {
+    return `<p class="risk-caution">Limited validation history. Use extra caution. ${display(message)}</p>`;
+  }
+
+  if (value === "PROMISING") {
+    return `<p class="risk-good">Promising competition history, but still not guaranteed.</p>`;
+  }
+
+  if (value === "RELIABLE") {
+    return `<p class="risk-good">Reliable competition history.</p>`;
+  }
+
+  return "";
 }
 
 function oddsWarning(fairOdds) {
@@ -222,6 +246,7 @@ function fixtureMarketCard(market) {
       ${oddsWarning(market.fair_odds)}
       <p>Score: <strong>${display(market.score)}</strong></p>
       <p class="muted">Gate: ${display(market.quality_gate)}</p>
+      ${reliabilityWarning(market.competition_status, market.competition_status_message)}
     </article>
   `;
 }
@@ -547,6 +572,7 @@ async function loadBetBuilder(fixtureId) {
         <p>Fixture lean: <strong>${display(first.fixture_result, "Not available")}</strong></p>
         <p>Competition reliability: <strong>${display(first.competition_status, "Unknown")}</strong></p>
         <p class="muted">${display(first.competition_status_message)}</p>
+        ${reliabilityWarning(first.competition_status, first.competition_status_message)}
         <p>Markets checked: <strong>${display(markets.length)}</strong></p>
         <p class="odds-caution">Testing mode: builder suggestions are filtered, but not guaranteed profit.</p>
       </article>
