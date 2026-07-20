@@ -48,12 +48,14 @@ function showPage(page) {
   document.getElementById("markets-page").classList.toggle("hidden", page !== "markets");
   document.getElementById("competitions-page").classList.toggle("hidden", page !== "competitions");
   document.getElementById("teams-page").classList.toggle("hidden", page !== "teams");
+  document.getElementById("catalog-page").classList.toggle("hidden", page !== "catalog");
 
   if (page === "fixtures") loadFixtures();
   if (page === "picks") loadPicks();
   if (page === "markets") loadMarkets();
   if (page === "competitions") loadCompetitions();
   if (page === "teams") loadTeams();
+  if (page === "catalog") loadCatalog();
 }
 
 async function loadHome() {
@@ -207,6 +209,26 @@ async function loadTeams() {
         <p>Venue: <strong>${team.venue ?? "Unknown"}</strong></p>
       </article>
     `).join("");
+}
+
+
+async function loadCatalog() {
+  const response = await fetch(`${API}/markets/catalog`);
+  const data = await response.json();
+
+  document.getElementById("catalog").innerHTML = `
+    <div class="grid">
+      ${data.market_types.map((market) => `
+        <article class="card">
+          <h3>${market.display_name}</h3>
+          <p class="muted">${market.market_type}</p>
+          <p>Markets: <strong>${market.market_count}</strong></p>
+          <p>Picks: <strong>${market.pick_count}</strong></p>
+          <p>Selections: <strong>${market.selections.join(", ")}</strong></p>
+        </article>
+      `).join("")}
+    </div>
+  `;
 }
 
 loadHome();
