@@ -27,6 +27,17 @@ Future football markets to add:
 - Fouls
 - Offsides
 - More player/team props
+- Draw markets
+- Corner markets
+- Team corners
+- Total corners
+- Tackles
+- Fouls
+- Yellow cards
+- GG2+
+- Anytime goalscorers
+- Player props
+
 
 ## Basketball
 

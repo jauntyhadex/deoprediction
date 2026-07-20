@@ -35,6 +35,10 @@
       <h2>Fixtures</h2>
       <div class="filters">
         <input id="fixture-search" placeholder="Search team or competition" />
+        <input id="fixture-date" type="date" />
+        <button onclick="setFixtureDate(0)">Today</button>
+        <button onclick="setFixtureDate(1)">Tomorrow</button>
+        <button onclick="clearFixtureDate()">All dates</button>
         <select id="fixture-status">
           <option value="">Any status</option>
           <option value="TIMED">Timed</option>
@@ -59,6 +63,11 @@
       <h2>Top Picks</h2>
       <p class="page-note">Only markets that pass our pick rules appear here. Use Top Markets to inspect all market probabilities.</p>
       <div class="filters">
+        <input id="pick-date" type="date" />
+        <button onclick="setPickDate(0)">Today</button>
+        <button onclick="setPickDate(1)">Tomorrow</button>
+        <button onclick="clearPickDate()">All dates</button>
+
         <select id="pick-grade">
           <option value="">Any grade</option>
           <option value="A+">A+</option>
@@ -91,6 +100,11 @@
       <h2>Top Markets</h2>
       <p class="page-note">This page shows ranked market probabilities, even when they are not strong enough to become official picks.</p>
       <div class="filters">
+        <input id="market-date" type="date" />
+        <button onclick="setMarketDate(0)">Today</button>
+        <button onclick="setMarketDate(1)">Tomorrow</button>
+        <button onclick="clearMarketDate()">All dates</button>
+
         <select id="market-filter">
           <option value="">Any market</option>
           <option value="MATCH_RESULT">Match Result</option>

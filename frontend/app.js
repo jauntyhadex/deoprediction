@@ -30,6 +30,54 @@ function lineValue(value) {
   return display(value);
 }
 
+function dateInputValue(daysFromToday = 0) {
+  const date = new Date();
+  date.setDate(date.getDate() + daysFromToday);
+  return date.toISOString().slice(0, 10);
+}
+
+function dateRangeParams(dateValue) {
+  if (!dateValue) return null;
+
+  const start = new Date(`${dateValue}T00:00:00`);
+  const end = new Date(`${dateValue}T23:59:59`);
+
+  return {
+    date_from: start.toISOString(),
+    date_to: end.toISOString(),
+  };
+}
+
+function setFixtureDate(daysFromToday) {
+  document.getElementById("fixture-date").value = dateInputValue(daysFromToday);
+  loadFixtures();
+}
+
+function clearFixtureDate() {
+  document.getElementById("fixture-date").value = "";
+  loadFixtures();
+}
+
+function setPickDate(daysFromToday) {
+  document.getElementById("pick-date").value = dateInputValue(daysFromToday);
+  loadPicks();
+}
+
+function clearPickDate() {
+  document.getElementById("pick-date").value = "";
+  loadPicks();
+}
+
+function setMarketDate(daysFromToday) {
+  document.getElementById("market-date").value = dateInputValue(daysFromToday);
+  loadMarkets();
+}
+
+function clearMarketDate() {
+  document.getElementById("market-date").value = "";
+  loadMarkets();
+}
+
 function messageCard(message) {
   return `<article class="card message"><p>${display(message)}</p></article>`;
 }
@@ -207,6 +255,7 @@ async function loadFixtures() {
   const search = document.getElementById("fixture-search").value.trim();
   const status = document.getElementById("fixture-status").value;
   const upcomingOnly = document.getElementById("upcoming-only").checked;
+  const selectedDate = document.getElementById("fixture-date").value;
 
   const params = new URLSearchParams({
     limit: "20",
@@ -215,6 +264,13 @@ async function loadFixtures() {
 
   if (search) params.set("search", search);
   if (status) params.set("status", status);
+
+  const fixtureDateRange = dateRangeParams(selectedDate);
+  if (fixtureDateRange) {
+    params.set("date_from", fixtureDateRange.date_from);
+    params.set("date_to", fixtureDateRange.date_to);
+    params.set("upcoming_only", "false");
+  }
 
   try {
     const data = await fetchJson(`${API}/fixtures?${params.toString()}`);
@@ -304,6 +360,7 @@ async function loadPicks() {
   const grade = document.getElementById("pick-grade").value;
   const market = document.getElementById("pick-market").value;
   const onePerFixture = document.getElementById("one-pick-per-fixture").checked;
+  const selectedDate = document.getElementById("pick-date").value;
 
   const params = new URLSearchParams({
     limit: "20",
@@ -313,6 +370,20 @@ async function loadPicks() {
 
   if (grade) params.set("minimum_grade", grade);
   if (market) params.set("market_type", market);
+
+  const marketDateRange = dateRangeParams(selectedDate);
+  if (marketDateRange) {
+    params.set("date_from", marketDateRange.date_from);
+    params.set("date_to", marketDateRange.date_to);
+    params.set("upcoming_only", "false");
+  }
+
+  const pickDateRange = dateRangeParams(selectedDate);
+  if (pickDateRange) {
+    params.set("date_from", pickDateRange.date_from);
+    params.set("date_to", pickDateRange.date_to);
+    params.set("upcoming_only", "false");
+  }
 
   try {
     const data = await fetchJson(`${API}/prediction-picks/top?${params.toString()}`);
@@ -326,6 +397,7 @@ async function loadMarkets() {
   setLoading("markets", "Loading markets...");
 
   const market = document.getElementById("market-filter").value;
+  const selectedDate = document.getElementById("market-date").value;
 
   const params = new URLSearchParams({
     limit: "20",
