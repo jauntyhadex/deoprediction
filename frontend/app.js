@@ -212,6 +212,10 @@ async function loadTeams() {
 }
 
 
+function selectionNames(selections) {
+  return selections.map((item) => item.selection ?? item).join(", ");
+}
+
 async function loadCatalog() {
   const response = await fetch(`${API}/markets/catalog`);
   const data = await response.json();
@@ -223,8 +227,7 @@ async function loadCatalog() {
           <h3>${market.display_name}</h3>
           <p class="muted">${market.market_type}</p>
           <p>Markets: <strong>${market.market_count}</strong></p>
-          <p>Picks: <strong>${market.pick_count}</strong></p>
-          <p>Selections: <strong>${market.selections.join(", ")}</strong></p>
+          <p>Selections: <strong>${selectionNames(market.selections)}</strong></p>
         </article>
       `).join("")}
     </div>
