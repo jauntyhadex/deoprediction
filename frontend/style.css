@@ -120,3 +120,10 @@ input, select {
 .error {
   border-color: rgba(255, 99, 99, 0.5);
 }
+
+
+.page-note {
+  color: #aab4c8;
+  max-width: 780px;
+  line-height: 1.6;
+}
