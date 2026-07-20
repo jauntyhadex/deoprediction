@@ -404,11 +404,21 @@ async function loadMarkets() {
     upcoming_only: "true",
   });
 
-  if (market) params.set("market_type", market);
+  if (market) {
+    params.set("market_type", market);
+  }
+
+  const marketDateRange = dateRangeParams(selectedDate);
+  if (marketDateRange) {
+    params.set("date_from", marketDateRange.date_from);
+    params.set("date_to", marketDateRange.date_to);
+    params.set("upcoming_only", "false");
+    params.delete("days_ahead");
+  }
 
   try {
     const data = await fetchJson(`${API}/prediction-picks/markets/top?${params.toString()}`);
-    renderCards("markets", data.markets, "No markets found for these filters.", marketCard);
+    renderCards("markets", data.markets, "No markets found for this date and filter.", marketCard);
   } catch (error) {
     setError("markets", error.message);
   }
