@@ -126,13 +126,40 @@
 
         <input id="market-line" placeholder="Line e.g. 1.5 or 2.5" />
 
+        <button onclick="setMarketOption('TOTAL_GOALS', 'OVER', '0.5')">Over 0.5</button>
         <button onclick="setMarketOption('TOTAL_GOALS', 'OVER', '1.5')">Over 1.5</button>
         <button onclick="setMarketOption('TOTAL_GOALS', 'OVER', '2.5')">Over 2.5</button>
-        <button onclick="setMarketOption('BTTS', 'YES', '')">GG / BTTS</button>
+        <button onclick="setMarketOption('TOTAL_GOALS', 'OVER', '3.5')">Over 3.5</button>
+        <button onclick="setMarketOption('TOTAL_GOALS', 'UNDER', '2.5')">Under 2.5</button>
+        <button onclick="setMarketOption('TOTAL_GOALS', 'UNDER', '3.5')">Under 3.5</button>
+
+        <button onclick="setMarketOption('BTTS', '', '')">BTTS / GG</button>
+        <button onclick="setMarketOption('BTTS', 'YES', '')">BTTS Yes</button>
+        <button onclick="setMarketOption('BTTS', 'NO', '')">BTTS No</button>
+
+        <button onclick="setMarketOption('MATCH_RESULT', 'HOME', '')">Home Win</button>
         <button onclick="setMarketOption('MATCH_RESULT', 'DRAW', '')">Draw</button>
+        <button onclick="setMarketOption('MATCH_RESULT', 'AWAY', '')">Away Win</button>
+
         <button onclick="setMarketOption('DOUBLE_CHANCE', '', '')">Double Chance</button>
+        <button onclick="setMarketOption('DOUBLE_CHANCE', 'HOME_OR_DRAW', '')">Home/Draw</button>
+        <button onclick="setMarketOption('DOUBLE_CHANCE', 'DRAW_OR_AWAY', '')">Draw/Away</button>
+        <button onclick="setMarketOption('DOUBLE_CHANCE', 'HOME_OR_AWAY', '')">Home/Away</button>
+
+        <button onclick="setMarketOption('DRAW_NO_BET', 'HOME', '')">Home DNB</button>
+        <button onclick="setMarketOption('DRAW_NO_BET', 'AWAY', '')">Away DNB</button>
+
+        <button onclick="setMarketOption('HOME_TEAM_TOTAL', 'OVER', '0.5')">Home 1+</button>
+        <button onclick="setMarketOption('HOME_TEAM_TOTAL', 'OVER', '1.5')">Home 2+</button>
         <button onclick="setMarketOption('HOME_TEAM_TOTAL', 'OVER', '2.5')">Home 3+</button>
+        <button onclick="setMarketOption('AWAY_TEAM_TOTAL', 'OVER', '0.5')">Away 1+</button>
+        <button onclick="setMarketOption('AWAY_TEAM_TOTAL', 'OVER', '1.5')">Away 2+</button>
         <button onclick="setMarketOption('AWAY_TEAM_TOTAL', 'OVER', '2.5')">Away 3+</button>
+
+        <button onclick="setMarketOption('FIRST_HALF_TOTAL_GOALS', 'OVER', '0.5')">1H Over 0.5</button>
+        <button onclick="setMarketOption('SECOND_HALF_TOTAL_GOALS', 'OVER', '0.5')">2H Over 0.5</button>
+        <button onclick="setMarketOption('WIN_TO_NIL', '', '')">Win To Nil</button>
+        <button onclick="setMarketOption('CLEAN_SHEET', '', '')">Clean Sheet</button>
 
         <select id="market-filter">
           <option value="">Any market</option>
