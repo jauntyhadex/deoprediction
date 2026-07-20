@@ -56,6 +56,69 @@ Needed:
 - Tennis markets
 - Tennis frontend pages
 
+## Table Tennis
+
+Build after football, basketball, and tennis.
+
+Needed:
+- Table tennis competitions
+- Table tennis players
+- Table tennis matches
+- Table tennis form
+- Table tennis head-to-head
+- Table tennis predictions
+- Table tennis markets
+- Table tennis frontend pages
+
+## Bet Builders
+
+Build after core markets are reliable.
+
+Football bet builder:
+- Match result plus goals
+- BTTS plus goals
+- Team goals plus result
+- Handicap plus goals
+- Corners
+- Team corners
+- Cards
+- Player props
+
+Basketball bet builder:
+- Moneyline/spread plus totals
+- Team totals
+- Quarter/half markets
+- Player props if data supports it
+
+Tennis bet builder:
+- Match winner plus set markets
+- Total games
+- Handicap games
+- Correct set score
+
+Table tennis bet builder:
+- Match winner plus game score
+- Total points
+- Handicap points
+- Correct game score
+
+## Zero-Money Deployment Plan
+
+Early testing can run on free tiers for very small usage.
+
+Plan:
+- Frontend on free static hosting
+- Backend API on free web hosting
+- Database on free Postgres
+- Telegram bot via cloud webhook
+- Laptop should not need to stay on
+
+Known limits:
+- Free backend can sleep when inactive
+- First request after sleep may be slow
+- Free database/storage limits must be watched
+- Paid hosting may be needed later for serious 24/7 reliability
+
 ## Telegram bot
 
 Build after football, basketball, and tennis core systems are ready.
