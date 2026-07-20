@@ -480,5 +480,7 @@ def get_fixture_prediction_picks(
     return {
         "fixture_id": fixture_id,
         "count": len(picks),
+        "market_count": len(markets),
         "picks": picks,
+        "markets": markets,
     }
