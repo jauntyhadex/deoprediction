@@ -56,6 +56,27 @@ function dateRangeParams(dateValue) {
   };
 }
 
+function readableDate(dateValue) {
+  if (!dateValue) {
+    return "All upcoming dates, sorted from closest first.";
+  }
+
+  const date = new Date(`${dateValue}T00:00:00`);
+  return `Showing games for ${date.toLocaleDateString(undefined, {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  })}.`;
+}
+
+function updateDateLabel(elementId, dateValue) {
+  const element = document.getElementById(elementId);
+  if (element) {
+    element.textContent = readableDate(dateValue);
+  }
+}
+
 function setFixtureDate(daysFromToday) {
   document.getElementById("fixture-date").value = dateInputValue(daysFromToday);
   loadFixtures();
@@ -294,6 +315,7 @@ async function loadFixtures() {
   const status = document.getElementById("fixture-status").value;
   const upcomingOnly = document.getElementById("upcoming-only").checked;
   const selectedDate = document.getElementById("fixture-date").value;
+  updateDateLabel("fixture-date-label", selectedDate);
 
   const params = new URLSearchParams({
     limit: "20",
@@ -399,6 +421,7 @@ async function loadPicks() {
   const market = document.getElementById("pick-market").value;
   const onePerFixture = document.getElementById("one-pick-per-fixture").checked;
   const selectedDate = document.getElementById("pick-date").value;
+  updateDateLabel("pick-date-label", selectedDate);
 
   const params = new URLSearchParams({
     limit: "20",
@@ -438,6 +461,7 @@ async function loadMarkets() {
   const selection = document.getElementById("market-selection").value;
   const line = document.getElementById("market-line").value.trim();
   const selectedDate = document.getElementById("market-date").value;
+  updateDateLabel("market-date-label", selectedDate);
 
   const params = new URLSearchParams({
     limit: "20",
