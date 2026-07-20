@@ -127,3 +127,12 @@ input, select {
   max-width: 780px;
   line-height: 1.6;
 }
+
+
+.detail-card {
+  border-color: rgba(91, 141, 239, 0.55);
+}
+
+button {
+  cursor: pointer;
+}

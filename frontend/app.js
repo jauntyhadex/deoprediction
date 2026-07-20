@@ -155,6 +155,7 @@ async function loadHome() {
 
 async function loadFixtures() {
   setLoading("fixtures", "Loading fixtures...");
+  document.getElementById("fixture-detail").innerHTML = "";
 
   const search = document.getElementById("fixture-search").value.trim();
   const status = document.getElementById("fixture-status").value;
@@ -177,11 +178,77 @@ async function loadFixtures() {
         <p class="muted">${display(fixture.competition?.name)}</p>
         <p>Status: <strong>${display(fixture.status)}</strong></p>
         <p>${localTime(fixture.kickoff_time)}</p>
+        <button onclick="loadFixtureDetail(${fixture.id})">View predictions</button>
       </article>
     `);
   } catch (error) {
     setError("fixtures", error.message);
   }
+}
+
+
+function fixtureMarketCard(market) {
+  return `
+    <article class="card">
+      <div class="row">
+        <h3>${display(market.market_type)}</h3>
+        <span class="badge">${display(market.grade ?? market.quality_gate ?? "")}</span>
+      </div>
+      <p>Selection: <strong>${display(market.selection)}</strong> ${lineValue(market.line)}</p>
+      <p>Probability: <strong>${display(market.probability)}%</strong></p>
+      <p>Fair odds: <strong>${display(market.fair_odds)}</strong></p>
+      <p>Score: <strong>${display(market.score)}</strong></p>
+      <p class="muted">Gate: ${display(market.quality_gate)}</p>
+    </article>
+  `;
+}
+
+async function loadFixtureDetail(fixtureId) {
+  const container = document.getElementById("fixture-detail");
+  container.innerHTML = `
+    <h2>Fixture Predictions</h2>
+    ${messageCard("Loading fixture predictions...")}
+  `;
+
+  try {
+    const data = await fetchJson(`${API}/prediction-picks/fixture/${fixtureId}`);
+
+    const picks = data.picks ?? data.prediction_picks ?? [];
+    const markets = data.markets ?? data.prediction_markets ?? [];
+    const fixture = data.fixture ?? {};
+    const prediction = data.prediction ?? {};
+
+    container.innerHTML = `
+      <h2>Fixture Predictions</h2>
+
+      <article class="card detail-card">
+        <h3>${display(fixture.home_team?.name ?? data.home_team)} vs ${display(fixture.away_team?.name ?? data.away_team)}</h3>
+        <p class="muted">${display(fixture.competition?.name ?? data.competition_name)}</p>
+        <p>Kickoff: <strong>${localTime(fixture.kickoff_time ?? data.kickoff_time)}</strong></p>
+        <p>Predicted result: <strong>${display(prediction.predicted_result ?? data.predicted_result)}</strong></p>
+        <p>Home win: <strong>${display(prediction.home_win_probability ?? data.home_win_probability)}%</strong></p>
+        <p>Draw: <strong>${display(prediction.draw_probability ?? data.draw_probability)}%</strong></p>
+        <p>Away win: <strong>${display(prediction.away_win_probability ?? data.away_win_probability)}%</strong></p>
+      </article>
+
+      <h3>Official Picks</h3>
+      <div>
+        ${picks.length > 0 ? picks.map(pickCard).join("") : messageCard("No official picks passed the rules for this fixture.")}
+      </div>
+
+      <h3>Market Probabilities</h3>
+      <div>
+        ${markets.length > 0 ? markets.map(fixtureMarketCard).join("") : messageCard("No market probabilities found for this fixture.")}
+      </div>
+    `;
+  } catch (error) {
+    container.innerHTML = `
+      <h2>Fixture Predictions</h2>
+      ${messageCard(error.message)}
+    `;
+  }
+
+  container.scrollIntoView({ behavior: "smooth" });
 }
 
 async function loadPicks() {
