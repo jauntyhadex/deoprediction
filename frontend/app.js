@@ -214,21 +214,18 @@ async function loadFixtureDetail(fixtureId) {
     const data = await fetchJson(`${API}/prediction-picks/fixture/${fixtureId}`);
 
     const picks = data.picks ?? data.prediction_picks ?? [];
-    const markets = data.markets ?? data.prediction_markets ?? [];
-    const fixture = data.fixture ?? {};
-    const prediction = data.prediction ?? {};
+    const firstPick = picks[0] ?? {};
 
     container.innerHTML = `
       <h2>Fixture Predictions</h2>
 
       <article class="card detail-card">
-        <h3>${display(fixture.home_team?.name ?? data.home_team)} vs ${display(fixture.away_team?.name ?? data.away_team)}</h3>
-        <p class="muted">${display(fixture.competition?.name ?? data.competition_name)}</p>
-        <p>Kickoff: <strong>${localTime(fixture.kickoff_time ?? data.kickoff_time)}</strong></p>
-        <p>Predicted result: <strong>${display(prediction.predicted_result ?? data.predicted_result)}</strong></p>
-        <p>Home win: <strong>${display(prediction.home_win_probability ?? data.home_win_probability)}%</strong></p>
-        <p>Draw: <strong>${display(prediction.draw_probability ?? data.draw_probability)}%</strong></p>
-        <p>Away win: <strong>${display(prediction.away_win_probability ?? data.away_win_probability)}%</strong></p>
+        <h3>${display(firstPick.home_team, "Fixture")} vs ${display(firstPick.away_team, "")}</h3>
+        <p class="muted">${display(firstPick.competition_name)}</p>
+        <p>Kickoff: <strong>${localTime(firstPick.kickoff_time)}</strong></p>
+        <p>Status: <strong>${display(firstPick.status)}</strong></p>
+        <p>Competition reliability: <strong>${display(firstPick.competition_status)}</strong></p>
+        <p class="muted">${display(firstPick.competition_status_message)}</p>
       </article>
 
       <h3>Official Picks</h3>
@@ -238,7 +235,7 @@ async function loadFixtureDetail(fixtureId) {
 
       <h3>Market Probabilities</h3>
       <div>
-        ${markets.length > 0 ? markets.map(fixtureMarketCard).join("") : messageCard("No market probabilities found for this fixture.")}
+        ${messageCard("Full fixture market probabilities will be added in the next backend step. For now, use Top Markets for all ranked market probabilities.")}
       </div>
     `;
   } catch (error) {
