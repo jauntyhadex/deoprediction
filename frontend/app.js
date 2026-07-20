@@ -214,7 +214,8 @@ async function loadFixtureDetail(fixtureId) {
     const data = await fetchJson(`${API}/prediction-picks/fixture/${fixtureId}`);
 
     const picks = data.picks ?? data.prediction_picks ?? [];
-    const firstPick = picks[0] ?? {};
+    const markets = data.markets ?? data.prediction_markets ?? [];
+    const firstPick = picks[0] ?? markets[0] ?? {};
 
     container.innerHTML = `
       <h2>Fixture Predictions</h2>
@@ -235,7 +236,7 @@ async function loadFixtureDetail(fixtureId) {
 
       <h3>Market Probabilities</h3>
       <div>
-        ${messageCard("Full fixture market probabilities will be added in the next backend step. For now, use Top Markets for all ranked market probabilities.")}
+        ${markets.length > 0 ? markets.map(fixtureMarketCard).join("") : messageCard("No market probabilities found for this fixture.")}
       </div>
     `;
   } catch (error) {

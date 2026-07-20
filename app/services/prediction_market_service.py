@@ -126,6 +126,7 @@ class PredictionMarketService:
         date_from: datetime | None = None,
         date_to: datetime | None = None,
         competition_id: int | None = None,
+        fixture_id: int | None = None,
         competition_status: str | None = None,
         market_type: str | None = None,
         selection: str | None = None,
@@ -292,6 +293,13 @@ class PredictionMarketService:
             query = query.filter(
                 Fixture.competition_id
                 == competition_id
+            )
+
+        if fixture_id is not None:
+
+            query = query.filter(
+                Fixture.id
+                == fixture_id
             )
 
         if competition_status:

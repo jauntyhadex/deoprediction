@@ -442,17 +442,35 @@ def get_fixture_prediction_picks(
         ge=1,
         le=20,
     ),
+    market_limit: int = Query(
+        default=50,
+        ge=1,
+        le=200,
+    ),
     db: Session = Depends(get_db),
 ):
 
-    service = PredictionPickService(db)
+    pick_service = PredictionPickService(db)
+    market_service = PredictionMarketService(db)
 
-    picks = service.get_fixture_picks(
+    picks = pick_service.get_fixture_picks(
         fixture_id=fixture_id,
         limit=limit,
     )
 
-    if not picks:
+    markets = market_service.get_top_markets(
+        fixture_id=fixture_id,
+        limit=market_limit,
+        upcoming_only=False,
+        days_ahead=None,
+        minimum_fair_odds=1.0,
+        maximum_fair_odds=100.0,
+        minimum_probability=0.0,
+        minimum_market_confidence=0.0,
+        one_per_fixture=False,
+    )
+
+    if not picks and not markets:
 
         raise HTTPException(
             status_code=404,
