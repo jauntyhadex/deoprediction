@@ -93,6 +93,14 @@ function setMarketOption(marketType, selection, line) {
   loadMarkets();
 }
 
+function goToMarketOption(marketType, selection, line) {
+  showPage("markets");
+  document.getElementById("market-filter").value = marketType;
+  document.getElementById("market-selection").value = selection;
+  document.getElementById("market-line").value = line;
+  loadMarkets();
+}
+
 function messageCard(message) {
   return `<article class="card message"><p>${display(message)}</p></article>`;
 }
