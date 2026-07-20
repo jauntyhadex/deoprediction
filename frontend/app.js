@@ -398,10 +398,21 @@ function findMarket(markets, marketType, selection, line = null) {
   });
 }
 
-function topUsefulMarkets(markets, count = 3) {
+function topValueMarkets(markets, count = 3) {
+  return markets
+    .filter((market) => Number(market.fair_odds) >= 1.30)
+    .filter((market) => Number(market.fair_odds) <= 3.50)
+    .filter((market) => Number(market.probability) >= 45)
+    .filter((market) => ["A+", "A", "B"].includes(market.grade))
+    .slice(0, count);
+}
+
+function supportLegMarkets(markets, count = 3) {
   return markets
     .filter((market) => Number(market.fair_odds) >= 1.15)
-    .filter((market) => Number(market.probability) >= 60)
+    .filter((market) => Number(market.fair_odds) < 1.30)
+    .filter((market) => Number(market.probability) >= 70)
+    .filter((market) => ["A+", "A", "B"].includes(market.grade))
     .slice(0, count);
 }
 
@@ -429,13 +440,22 @@ function builderComboCard(title, note, legs) {
 
 function buildBetBuilderCombos(markets) {
   const combos = [];
-  const useful = topUsefulMarkets(markets, 3);
+  const valueLegs = topValueMarkets(markets, 3);
+  const supportLegs = supportLegMarkets(markets, 3);
 
-  if (useful.length >= 2) {
+  if (valueLegs.length >= 2) {
     combos.push({
       title: "Top Value Builder",
-      note: "Uses the strongest markets with usable fair odds.",
-      legs: useful.slice(0, Math.min(3, useful.length)),
+      note: "Uses stronger odds only. Low odds are excluded from this section.",
+      legs: valueLegs.slice(0, Math.min(3, valueLegs.length)),
+    });
+  }
+
+  if (supportLegs.length >= 2) {
+    combos.push({
+      title: "Support Legs Builder",
+      note: "High-probability low-odds legs. Better for support, not main value.",
+      legs: supportLegs.slice(0, Math.min(3, supportLegs.length)),
     });
   }
 
@@ -525,7 +545,10 @@ async function loadBetBuilder(fixtureId) {
         <h3>${display(first.home_team)} vs ${display(first.away_team)}</h3>
         <p class="muted">${display(first.competition_name)} - ${localTime(first.kickoff_time)}</p>
         <p>Fixture lean: <strong>${display(first.fixture_result, "Not available")}</strong></p>
+        <p>Competition reliability: <strong>${display(first.competition_status, "Unknown")}</strong></p>
+        <p class="muted">${display(first.competition_status_message)}</p>
         <p>Markets checked: <strong>${display(markets.length)}</strong></p>
+        <p class="odds-caution">Testing mode: builder suggestions are filtered, but not guaranteed profit.</p>
       </article>
 
       ${combos.length > 0 ? combos.map((combo) => builderComboCard(combo.title, combo.note, combo.legs)).join("") : messageCard("No builder suggestions found for this fixture.")}
