@@ -107,44 +107,100 @@ function clearMarketDate() {
   loadMarkets();
 }
 
-function marketFilterText(marketType, selection, line) {
-  const parts = [];
-
-  if (marketType) parts.push(marketType);
-  if (selection) parts.push(selection);
-  if (line) parts.push(line);
-
-  return parts.length > 0
-    ? `Current market filter: ${parts.join(" - ")}`
-    : "Current market filter: Any market";
-}
-
-function updateMarketCurrentFilter() {
-  const marketType = document.getElementById("market-filter")?.value || "";
-  const selection = document.getElementById("market-selection")?.value || "";
-  const line = document.getElementById("market-line")?.value.trim() || "";
-
-  const label = document.getElementById("market-current-filter");
-  if (label) {
-    label.textContent = marketFilterText(marketType, selection, line);
-  }
-}
-
 function setMarketOption(marketType, selection, line) {
-  document.getElementById("market-filter").value = marketType || "";
-  document.getElementById("market-selection").value = selection || "";
-  document.getElementById("market-line").value = line || "";
-  updateMarketCurrentFilter();
+  document.getElementById("market-filter").value = marketType;
+  document.getElementById("market-selection").value = selection;
+  document.getElementById("market-line").value = line;
   loadMarkets();
 }
 
 function goToMarketOption(marketType, selection, line) {
   showPage("markets");
-  document.getElementById("market-filter").value = marketType || "";
-  document.getElementById("market-selection").value = selection || "";
-  document.getElementById("market-line").value = line || "";
-  updateMarketCurrentFilter();
+  document.getElementById("market-filter").value = marketType;
+  document.getElementById("market-selection").value = selection;
+  document.getElementById("market-line").value = line;
   loadMarkets();
+}
+
+function messageCard(message) {
+  return `<article class="card message"><p>${display(message)}</p></article>`;
+}
+
+function setLoading(containerId, message = "Loading...") {
+  document.getElementById(containerId).innerHTML = messageCard(message);
+}
+
+function setError(containerId, message = "Could not load data. Check that the backend server is running.") {
+  document.getElementById(containerId).innerHTML = `<article class="card error"><p>${display(message)}</p></article>`;
+}
+
+function sortByKickoff(items) {
+  const list = Array.isArray(items) ? [...items] : [];
+
+  return list.sort((a, b) => {
+    const firstDate = new Date(a.kickoff_time || 0).getTime();
+    const secondDate = new Date(b.kickoff_time || 0).getTime();
+
+    if (firstDate !== secondDate) {
+      return firstDate - secondDate;
+    }
+
+    return Number(b.score || 0) - Number(a.score || 0);
+  });
+}
+
+function renderCards(containerId, items, emptyMessage, cardBuilder) {
+  const list = Array.isArray(items) ? items : [];
+  document.getElementById(containerId).innerHTML =
+    list.length > 0 ? list.map(cardBuilder).join("") : messageCard(emptyMessage);
+}
+
+async function fetchJson(url) {
+  const response = await fetch(url);
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.detail || `Request failed with status ${response.status}`);
+  }
+
+  return data;
+}
+
+function pickCard(pick) {
+  return `
+    <article class="card">
+      <div class="row">
+        <h3>${display(pick.home_team)} vs ${display(pick.away_team)}</h3>
+        <span class="badge">${display(pick.grade)}</span>
+      </div>
+      <p class="muted">${display(pick.competition_name)} - ${localTime(pick.kickoff_time)}</p>
+      <p><strong>${display(pick.market_type)}</strong>: ${display(pick.selection)} ${lineValue(pick.line)}</p>
+      <p>Probability: <strong>${display(pick.probability)}%</strong> - Confidence: <strong>${display(pick.confidence)}%</strong></p>
+      <p>Fair odds: <strong>${display(pick.fair_odds)}</strong> - Score: <strong>${display(pick.score)}</strong></p>
+      ${oddsWarning(pick.fair_odds)}
+      <p class="muted">Competition status: ${display(pick.competition_status)}</p>
+      ${reliabilityWarning(pick.competition_status, pick.competition_status_message)}
+    </article>
+  `;
+}
+
+function marketCard(market) {
+  return `
+    <article class="card">
+      <div class="row">
+        <h3>${display(market.home_team)} vs ${display(market.away_team)}</h3>
+        <span class="badge">${display(market.grade)}</span>
+      </div>
+      <p class="muted">${display(market.competition_name)} - ${localTime(market.kickoff_time)}</p>
+      <p><strong>${display(market.market_type)}</strong>: ${display(market.selection)} ${lineValue(market.line)}</p>
+      <p>Probability: <strong>${display(market.probability)}%</strong> - Market confidence: <strong>${display(market.market_confidence)}%</strong></p>
+      <p>Fair odds: <strong>${display(market.fair_odds)}</strong> - Score: <strong>${display(market.score)}</strong></p>
+      ${oddsWarning(market.fair_odds)}
+      <p>Fixture lean: <strong>${display(market.fixture_result)}</strong> - Gate: <strong>${display(market.quality_gate)}</strong></p>
+      <p class="muted">Competition status: ${display(market.competition_status)}</p>
+      ${reliabilityWarning(market.competition_status, market.competition_status_message)}
+    </article>
+  `;
 }
 
 function reliabilityWarning(status, message = "") {
@@ -405,19 +461,24 @@ async function loadMarkets() {
   const selection = document.getElementById("market-selection").value;
   const line = document.getElementById("market-line").value.trim();
   const selectedDate = document.getElementById("market-date").value;
-
   updateDateLabel("market-date-label", selectedDate);
-  updateMarketCurrentFilter();
 
   const params = new URLSearchParams({
-    limit: "50",
+    limit: "20",
     upcoming_only: "true",
-    one_per_fixture: "false",
   });
 
-  if (market) params.set("market_type", market);
-  if (selection) params.set("selection", selection);
-  if (line) params.set("line", line);
+  if (market) {
+    params.set("market_type", market);
+  }
+
+  if (selection) {
+    params.set("selection", selection);
+  }
+
+  if (line) {
+    params.set("line", line);
+  }
 
   const marketDateRange = dateRangeParams(selectedDate);
   if (marketDateRange) {
