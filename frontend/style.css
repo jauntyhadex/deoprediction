@@ -112,3 +112,11 @@ input, select {
 .muted {
   color: #94a3b8;
 }
+
+.message p {
+  margin: 0;
+}
+
+.error {
+  border-color: rgba(255, 99, 99, 0.5);
+}
