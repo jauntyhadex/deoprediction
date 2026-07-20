@@ -160,6 +160,7 @@ function showPage(page) {
   document.getElementById("teams-page").classList.toggle("hidden", page !== "teams");
   document.getElementById("catalog-page").classList.toggle("hidden", page !== "catalog");
   document.getElementById("builder-page").classList.toggle("hidden", page !== "builder");
+  document.getElementById("guide-page").classList.toggle("hidden", page !== "guide");
 
   if (page === "fixtures") loadFixtures();
   if (page === "picks") loadPicks();

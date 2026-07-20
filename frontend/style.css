@@ -190,3 +190,8 @@ button {
   border-radius: 10px;
   padding: 8px 10px;
 }
+
+
+.guide-highlight {
+  border-color: rgba(91, 141, 239, 0.55);
+}

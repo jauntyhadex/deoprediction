@@ -19,6 +19,7 @@
         <button onclick="showPage('teams')">Teams</button>
         <button onclick="showPage('catalog')">Market Catalog</button>
         <button onclick="showPage('builder')">Bet Builder</button>
+        <button onclick="showPage('guide')">Guide</button>
       </nav>
     </div>
 
@@ -150,6 +151,54 @@
 
       <div id="builder-fixtures"></div>
       <div id="builder-results"></div>
+    </section>
+
+
+    <section id="guide-page" class="hidden">
+      <h2>Prediction Guide</h2>
+      <p class="page-note">How to read DeoPrediction picks, market probabilities, risk labels, and bet builder suggestions.</p>
+
+      <div class="grid">
+        <article class="card">
+          <h3>Top Picks</h3>
+          <p>Only markets that pass our pick rules appear here.</p>
+          <p>These are stronger than normal market probabilities, but still not guaranteed.</p>
+        </article>
+
+        <article class="card">
+          <h3>Top Markets</h3>
+          <p>Shows ranked probabilities for many markets.</p>
+          <p>A market can appear here even when it is not strong enough to become an official pick.</p>
+        </article>
+
+        <article class="card">
+          <h3>Grades</h3>
+          <p><strong>A+</strong> = strongest confidence tier.</p>
+          <p><strong>A</strong> = strong confidence tier.</p>
+          <p><strong>B</strong> = useful but less strong.</p>
+          <p><strong>C</strong> = lowest displayed tier.</p>
+        </article>
+
+        <article class="card">
+          <h3>Competition Reliability</h3>
+          <p><strong>Reliable</strong> = best historical validation.</p>
+          <p><strong>Promising</strong> = good signs, still needs more proof.</p>
+          <p><strong>Limited</strong> = not enough strong evidence yet.</p>
+          <p><strong>Weak</strong> = prediction is shown, but risk is higher.</p>
+        </article>
+
+        <article class="card">
+          <h3>Low Odds</h3>
+          <p>Very low odds can have high probability but poor value.</p>
+          <p>They are usually better as support legs, not main picks.</p>
+        </article>
+
+        <article class="card">
+          <h3>Bet Builder</h3>
+          <p>Combines multiple market legs from the same fixture.</p>
+          <p>Builders are suggestions, not guaranteed profit.</p>
+        </article>
+      </div>
     </section>
 
   </main>
