@@ -1,5 +1,8 @@
 const API = "http://127.0.0.1:8000";
 
+let teamOffset = 0;
+const teamPageSize = 100;
+
 function escapeHtml(value) {
   const text = value === null || value === undefined ? "" : String(value);
   return text.replace(/[&<>"']/g, (char) => ({
@@ -33,7 +36,12 @@ function lineValue(value) {
 function dateInputValue(daysFromToday = 0) {
   const date = new Date();
   date.setDate(date.getDate() + daysFromToday);
-  return date.toISOString().slice(0, 10);
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
 }
 
 function dateRangeParams(dateValue) {
@@ -459,14 +467,28 @@ async function loadCompetitions() {
   }
 }
 
-async function loadTeams() {
-  setLoading("teams", "Loading teams...");
+function resetTeams() {
+  teamOffset = 0;
+  loadTeams(false);
+}
+
+function loadMoreTeams() {
+  loadTeams(true);
+}
+
+async function loadTeams(append = false) {
+  if (!append) {
+    teamOffset = 0;
+    setLoading("teams", "Loading teams...");
+    document.getElementById("team-count").textContent = "";
+  }
 
   const search = document.getElementById("team-search").value.trim();
   const country = document.getElementById("team-country").value.trim();
 
   const params = new URLSearchParams({
-    limit: "30",
+    limit: String(teamPageSize),
+    offset: String(teamOffset),
   });
 
   if (search) params.set("search", search);
@@ -474,138 +496,38 @@ async function loadTeams() {
 
   try {
     const data = await fetchJson(`${API}/teams?${params.toString()}`);
+    const teams = Array.isArray(data.teams) ? data.teams : [];
 
-    renderCards("teams", data.teams, "No teams found.", (team) => `
-      <article class="card">
-        <div class="row">
-          <h3>${display(team.name)}</h3>
-          <span class="badge">${display(team.tla)}</span>
-        </div>
-        <p class="muted">${display(team.country, "Unknown country")}</p>
-        <p>Short name: <strong>${display(team.short_name)}</strong></p>
-        <p>Competition: <strong>${display(team.competition?.name, "None")}</strong></p>
-        <p>Venue: <strong>${display(team.venue, "Unknown")}</strong></p>
-      </article>
-    `);
+    const html = teams.length > 0
+      ? teams.map((team) => `
+        <article class="card">
+          <div class="row">
+            <h3>${display(team.name)}</h3>
+            <span class="badge">${display(team.tla)}</span>
+          </div>
+          <p class="muted">${display(team.country, "Unknown country")}</p>
+          <p>Short name: <strong>${display(team.short_name)}</strong></p>
+          <p>Competition: <strong>${display(team.competition?.name, "None")}</strong></p>
+          <p>Venue: <strong>${display(team.venue, "Unknown")}</strong></p>
+        </article>
+      `).join("")
+      : messageCard(append ? "No more teams found." : "No teams found.");
+
+    if (append) {
+      document.getElementById("teams").insertAdjacentHTML("beforeend", html);
+    } else {
+      document.getElementById("teams").innerHTML = html;
+    }
+
+    teamOffset += teams.length;
+
+    document.getElementById("team-count").textContent =
+      teams.length > 0
+        ? `Showing ${teamOffset} teams. Click Load more to continue.`
+        : `Showing ${teamOffset} teams.`;
   } catch (error) {
     setError("teams", error.message);
   }
-}
-
-
-function marketLegLabel(market) {
-  return `${display(market.market_type)}: ${display(market.selection)} ${lineValue(market.line)}`;
-}
-
-function findMarket(markets, marketType, selection, line = null) {
-  return markets.find((market) => {
-    const sameType = market.market_type === marketType;
-    const sameSelection = market.selection === selection;
-    const sameLine = line === null || Number(market.line) === Number(line);
-    return sameType && sameSelection && sameLine;
-  });
-}
-
-function topValueMarkets(markets, count = 3) {
-  return markets
-    .filter((market) => Number(market.fair_odds) >= 1.30)
-    .filter((market) => Number(market.fair_odds) <= 3.50)
-    .filter((market) => Number(market.probability) >= 45)
-    .filter((market) => ["A+", "A", "B"].includes(market.grade))
-    .slice(0, count);
-}
-
-function supportLegMarkets(markets, count = 3) {
-  return markets
-    .filter((market) => Number(market.fair_odds) >= 1.15)
-    .filter((market) => Number(market.fair_odds) < 1.30)
-    .filter((market) => Number(market.probability) >= 70)
-    .filter((market) => ["A+", "A", "B"].includes(market.grade))
-    .slice(0, count);
-}
-
-function comboOdds(legs) {
-  const total = legs.reduce((value, leg) => value * Number(leg.fair_odds || 1), 1);
-  return total.toFixed(2);
-}
-
-function builderComboCard(title, note, legs) {
-  return `
-    <article class="card builder-combo">
-      <h3>${display(title)}</h3>
-      <p class="muted">${display(note)}</p>
-      <p>Estimated combined fair odds: <strong>${comboOdds(legs)}</strong></p>
-      ${legs.map((leg) => `
-        <div class="builder-leg">
-          <strong>${marketLegLabel(leg)}</strong>
-          <p>Probability: ${display(leg.probability)}% - Fair odds: ${display(leg.fair_odds)} - Grade: ${display(leg.grade)}</p>
-          ${oddsWarning(leg.fair_odds)}
-        </div>
-      `).join("")}
-    </article>
-  `;
-}
-
-function buildBetBuilderCombos(markets) {
-  const combos = [];
-  const valueLegs = topValueMarkets(markets, 3);
-  const supportLegs = supportLegMarkets(markets, 3);
-
-  if (valueLegs.length >= 2) {
-    combos.push({
-      title: "Top Value Builder",
-      note: "Uses stronger odds only. Low odds are excluded from this section.",
-      legs: valueLegs.slice(0, Math.min(3, valueLegs.length)),
-    });
-  }
-
-  if (supportLegs.length >= 2) {
-    combos.push({
-      title: "Support Legs Builder",
-      note: "High-probability low-odds legs. Better for support, not main value.",
-      legs: supportLegs.slice(0, Math.min(3, supportLegs.length)),
-    });
-  }
-
-  const over15 = findMarket(markets, "TOTAL_GOALS", "OVER", 1.5);
-  const doubleChanceHome = findMarket(markets, "DOUBLE_CHANCE", "HOME_OR_DRAW");
-  const doubleChanceAway = findMarket(markets, "DOUBLE_CHANCE", "DRAW_OR_AWAY");
-  const doubleChanceEither = doubleChanceAway ?? doubleChanceHome;
-
-  if (over15 && doubleChanceEither) {
-    combos.push({
-      title: "Safer Result + Goals",
-      note: "Combines a result-protection leg with a goals leg.",
-      legs: [doubleChanceEither, over15],
-    });
-  }
-
-  const bttsYes = findMarket(markets, "BTTS", "YES");
-  const bttsNo = findMarket(markets, "BTTS", "NO");
-  const bttsBest = [bttsYes, bttsNo]
-    .filter(Boolean)
-    .sort((a, b) => Number(b.probability) - Number(a.probability))[0];
-
-  if (bttsBest && over15) {
-    combos.push({
-      title: "Goals Builder",
-      note: "Combines BTTS direction with total goals.",
-      legs: [bttsBest, over15],
-    });
-  }
-
-  const secondHalfOver = findMarket(markets, "SECOND_HALF_TOTAL_GOALS", "OVER", 0.5);
-  const firstHalfOver = findMarket(markets, "FIRST_HALF_TOTAL_GOALS", "OVER", 0.5);
-
-  if (firstHalfOver && secondHalfOver) {
-    combos.push({
-      title: "Half Goals Builder",
-      note: "Uses first-half and second-half goal markets.",
-      legs: [firstHalfOver, secondHalfOver],
-    });
-  }
-
-  return combos;
 }
 
 async function loadBuilderFixtures() {

@@ -142,8 +142,10 @@
       <div class="filters">
         <input id="team-search" placeholder="Search team, venue, or competition" />
         <input id="team-country" placeholder="Country" />
-        <button onclick="loadTeams()">Load teams</button>
+        <button onclick="resetTeams()">Load teams</button>
+        <button onclick="loadMoreTeams()">Load more</button>
       </div>
+      <p id="team-count" class="page-note"></p>
       <div id="teams"></div>
     </section>
 
