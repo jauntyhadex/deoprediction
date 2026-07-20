@@ -47,22 +47,13 @@ function showPage(page) {
   document.getElementById("picks-page").classList.toggle("hidden", page !== "picks");
   document.getElementById("markets-page").classList.toggle("hidden", page !== "markets");
   document.getElementById("competitions-page").classList.toggle("hidden", page !== "competitions");
+  document.getElementById("teams-page").classList.toggle("hidden", page !== "teams");
 
-  if (page === "fixtures") {
-    loadFixtures();
-  }
-
-  if (page === "picks") {
-    loadPicks();
-  }
-
-  if (page === "markets") {
-    loadMarkets();
-  }
-
-  if (page === "competitions") {
-    loadCompetitions();
-  }
+  if (page === "fixtures") loadFixtures();
+  if (page === "picks") loadPicks();
+  if (page === "markets") loadMarkets();
+  if (page === "competitions") loadCompetitions();
+  if (page === "teams") loadTeams();
 }
 
 async function loadHome() {
@@ -103,13 +94,8 @@ async function loadFixtures() {
     upcoming_only: String(upcomingOnly),
   });
 
-  if (search) {
-    params.set("search", search);
-  }
-
-  if (status) {
-    params.set("status", status);
-  }
+  if (search) params.set("search", search);
+  if (status) params.set("status", status);
 
   const response = await fetch(`${API}/fixtures?${params.toString()}`);
   const data = await response.json();
@@ -136,13 +122,8 @@ async function loadPicks() {
     one_per_fixture: String(onePerFixture),
   });
 
-  if (grade) {
-    params.set("minimum_grade", grade);
-  }
-
-  if (market) {
-    params.set("market_type", market);
-  }
+  if (grade) params.set("minimum_grade", grade);
+  if (market) params.set("market_type", market);
 
   const response = await fetch(`${API}/prediction-picks/top?${params.toString()}`);
   const data = await response.json();
@@ -159,9 +140,7 @@ async function loadMarkets() {
     upcoming_only: "true",
   });
 
-  if (market) {
-    params.set("market_type", market);
-  }
+  if (market) params.set("market_type", market);
 
   const response = await fetch(`${API}/prediction-picks/markets/top?${params.toString()}`);
   const data = await response.json();
@@ -169,7 +148,6 @@ async function loadMarkets() {
   document.getElementById("markets").innerHTML =
     data.markets.map(marketCard).join("");
 }
-
 
 async function loadCompetitions() {
   const search = document.getElementById("competition-search").value.trim();
@@ -179,13 +157,8 @@ async function loadCompetitions() {
     limit: "30",
   });
 
-  if (search) {
-    params.set("search", search);
-  }
-
-  if (reliability) {
-    params.set("reliability_status", reliability);
-  }
+  if (search) params.set("search", search);
+  if (reliability) params.set("reliability_status", reliability);
 
   const response = await fetch(`${API}/competitions?${params.toString()}`);
   const data = await response.json();
@@ -197,12 +170,41 @@ async function loadCompetitions() {
           <h3>${competition.name}</h3>
           <span class="badge">${competition.reliability.status}</span>
         </div>
-        <p class="muted">${competition.country} � ${competition.code}</p>
+        <p class="muted">${competition.country} - ${competition.code}</p>
         <p>Season: <strong>${competition.season}</strong></p>
         <p>Evaluations: <strong>${competition.reliability.evaluations}</strong></p>
         <p>Accuracy: <strong>${competition.reliability.accuracy}%</strong></p>
         <p>Brier: <strong>${competition.reliability.brier}</strong></p>
         <p class="muted">${competition.reliability.status_message ?? competition.reliability.message ?? ""}</p>
+      </article>
+    `).join("");
+}
+
+async function loadTeams() {
+  const search = document.getElementById("team-search").value.trim();
+  const country = document.getElementById("team-country").value.trim();
+
+  const params = new URLSearchParams({
+    limit: "30",
+  });
+
+  if (search) params.set("search", search);
+  if (country) params.set("country", country);
+
+  const response = await fetch(`${API}/teams?${params.toString()}`);
+  const data = await response.json();
+
+  document.getElementById("teams").innerHTML =
+    data.teams.map((team) => `
+      <article class="card">
+        <div class="row">
+          <h3>${team.name}</h3>
+          <span class="badge">${team.tla ?? ""}</span>
+        </div>
+        <p class="muted">${team.country ?? "Unknown country"}</p>
+        <p>Short name: <strong>${team.short_name ?? ""}</strong></p>
+        <p>Competition: <strong>${team.competition?.name ?? "None"}</strong></p>
+        <p>Venue: <strong>${team.venue ?? "Unknown"}</strong></p>
       </article>
     `).join("");
 }

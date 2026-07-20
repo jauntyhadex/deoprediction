@@ -16,6 +16,7 @@
         <button onclick="showPage('picks')">Top Picks</button>
         <button onclick="showPage('markets')">Top Markets</button>
         <button onclick="showPage('competitions')">Competitions</button>
+        <button onclick="showPage('teams')">Teams</button>
       </nav>
     </div>
 
@@ -29,7 +30,6 @@
 
     <section id="fixtures-page" class="hidden">
       <h2>Fixtures</h2>
-
       <div class="filters">
         <input id="fixture-search" placeholder="Search team or competition" />
         <select id="fixture-status">
@@ -48,13 +48,11 @@
         </label>
         <button onclick="loadFixtures()">Load fixtures</button>
       </div>
-
       <div id="fixtures"></div>
     </section>
 
     <section id="picks-page" class="hidden">
       <h2>Top Picks</h2>
-
       <div class="filters">
         <select id="pick-grade">
           <option value="">Any grade</option>
@@ -72,8 +70,6 @@
           <option value="ASIAN_HANDICAP">Asian Handicap</option>
           <option value="DOUBLE_CHANCE">Double Chance</option>
           <option value="DRAW_NO_BET">Draw No Bet</option>
-          <option value="FIRST_HALF_TOTAL_GOALS">First Half Total Goals</option>
-          <option value="SECOND_HALF_TOTAL_GOALS">Second Half Total Goals</option>
         </select>
 
         <label>
@@ -83,13 +79,11 @@
 
         <button onclick="loadPicks()">Load picks</button>
       </div>
-
       <div id="picks"></div>
     </section>
 
     <section id="markets-page" class="hidden">
       <h2>Top Markets</h2>
-
       <div class="filters">
         <select id="market-filter">
           <option value="">Any market</option>
@@ -99,24 +93,18 @@
           <option value="ASIAN_HANDICAP">Asian Handicap</option>
           <option value="DOUBLE_CHANCE">Double Chance</option>
           <option value="DRAW_NO_BET">Draw No Bet</option>
-          <option value="FIRST_HALF_TOTAL_GOALS">First Half Total Goals</option>
-          <option value="SECOND_HALF_TOTAL_GOALS">Second Half Total Goals</option>
           <option value="HOME_TEAM_TOTAL">Home Team Total</option>
           <option value="AWAY_TEAM_TOTAL">Away Team Total</option>
         </select>
-
         <button onclick="loadMarkets()">Load markets</button>
       </div>
-
       <div id="markets"></div>
     </section>
 
     <section id="competitions-page" class="hidden">
       <h2>Competitions</h2>
-
       <div class="filters">
         <input id="competition-search" placeholder="Search competition or country" />
-
         <select id="competition-status">
           <option value="">Any reliability</option>
           <option value="RELIABLE">Reliable</option>
@@ -124,13 +112,20 @@
           <option value="LIMITED">Limited</option>
           <option value="WEAK">Weak</option>
         </select>
-
         <button onclick="loadCompetitions()">Load competitions</button>
       </div>
-
       <div id="competitions"></div>
     </section>
 
+    <section id="teams-page" class="hidden">
+      <h2>Teams</h2>
+      <div class="filters">
+        <input id="team-search" placeholder="Search team, venue, or competition" />
+        <input id="team-country" placeholder="Country" />
+        <button onclick="loadTeams()">Load teams</button>
+      </div>
+      <div id="teams"></div>
+    </section>
   </main>
 
   <script src="app.js"></script>
