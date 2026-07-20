@@ -105,6 +105,21 @@ function setError(containerId, message = "Could not load data. Check that the ba
   document.getElementById(containerId).innerHTML = `<article class="card error"><p>${display(message)}</p></article>`;
 }
 
+function sortByKickoff(items) {
+  const list = Array.isArray(items) ? [...items] : [];
+
+  return list.sort((a, b) => {
+    const firstDate = new Date(a.kickoff_time || 0).getTime();
+    const secondDate = new Date(b.kickoff_time || 0).getTime();
+
+    if (firstDate !== secondDate) {
+      return firstDate - secondDate;
+    }
+
+    return Number(b.score || 0) - Number(a.score || 0);
+  });
+}
+
 function renderCards(containerId, items, emptyMessage, cardBuilder) {
   const list = Array.isArray(items) ? items : [];
   document.getElementById(containerId).innerHTML =
@@ -255,7 +270,7 @@ async function loadHome() {
       </div>
     `;
 
-    renderCards("home-picks", data.top_picks.picks, "No top picks found.", pickCard);
+    renderCards("home-picks", sortByKickoff(data.top_picks.picks), "No top picks found.", pickCard);
   } catch (error) {
     status.textContent = "Backend not connected. Start the API server.";
     setError("counts");
@@ -290,7 +305,7 @@ async function loadFixtures() {
   try {
     const data = await fetchJson(`${API}/fixtures?${params.toString()}`);
 
-    renderCards("fixtures", data.fixtures, "No fixtures found.", (fixture) => `
+    renderCards("fixtures", sortByKickoff(data.fixtures), "No fixtures found.", (fixture) => `
       <article class="card">
         <h3>${display(fixture.home_team?.name)} vs ${display(fixture.away_team?.name)}</h3>
         <p class="muted">${display(fixture.competition?.name)}</p>
@@ -402,7 +417,7 @@ async function loadPicks() {
 
   try {
     const data = await fetchJson(`${API}/prediction-picks/top?${params.toString()}`);
-    renderCards("picks", data.picks, "No picks found for these filters.", pickCard);
+    renderCards("picks", sortByKickoff(data.picks), "No picks found for these filters.", pickCard);
   } catch (error) {
     setError("picks", error.message);
   }
@@ -443,7 +458,7 @@ async function loadMarkets() {
 
   try {
     const data = await fetchJson(`${API}/prediction-picks/markets/top?${params.toString()}`);
-    renderCards("markets", data.markets, "No markets found for this date and filter.", marketCard);
+    renderCards("markets", sortByKickoff(data.markets), "No markets found for this date and filter.", marketCard);
   } catch (error) {
     setError("markets", error.message);
   }
