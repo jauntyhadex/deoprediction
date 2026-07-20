@@ -105,6 +105,30 @@
         <button onclick="setMarketDate(1)">Tomorrow</button>
         <button onclick="clearMarketDate()">All dates</button>
 
+        <select id="market-selection">
+          <option value="">Any selection</option>
+          <option value="OVER">Over</option>
+          <option value="UNDER">Under</option>
+          <option value="YES">Yes / GG</option>
+          <option value="NO">No</option>
+          <option value="HOME">Home</option>
+          <option value="DRAW">Draw</option>
+          <option value="AWAY">Away</option>
+          <option value="HOME_OR_DRAW">Home or Draw</option>
+          <option value="DRAW_OR_AWAY">Draw or Away</option>
+          <option value="HOME_OR_AWAY">Home or Away</option>
+        </select>
+
+        <input id="market-line" placeholder="Line e.g. 1.5 or 2.5" />
+
+        <button onclick="setMarketOption('TOTAL_GOALS', 'OVER', '1.5')">Over 1.5</button>
+        <button onclick="setMarketOption('TOTAL_GOALS', 'OVER', '2.5')">Over 2.5</button>
+        <button onclick="setMarketOption('BTTS', 'YES', '')">GG / BTTS</button>
+        <button onclick="setMarketOption('MATCH_RESULT', 'DRAW', '')">Draw</button>
+        <button onclick="setMarketOption('DOUBLE_CHANCE', '', '')">Double Chance</button>
+        <button onclick="setMarketOption('HOME_TEAM_TOTAL', 'OVER', '2.5')">Home 3+</button>
+        <button onclick="setMarketOption('AWAY_TEAM_TOTAL', 'OVER', '2.5')">Away 3+</button>
+
         <select id="market-filter">
           <option value="">Any market</option>
           <option value="MATCH_RESULT">Match Result</option>

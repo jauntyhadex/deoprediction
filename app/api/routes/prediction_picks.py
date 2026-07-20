@@ -323,6 +323,9 @@ def get_top_prediction_markets(
     selection: str | None = Query(
         default=None,
     ),
+    line: float | None = Query(
+        default=None,
+    ),
     minimum_fair_odds: float = Query(
         default=1.15,
         ge=1.0,
@@ -388,6 +391,7 @@ def get_top_prediction_markets(
         ),
         market_type=market_type,
         selection=selection,
+        line=line,
         minimum_fair_odds=minimum_fair_odds,
         maximum_fair_odds=maximum_fair_odds,
         minimum_probability=minimum_probability,
@@ -414,6 +418,7 @@ def get_top_prediction_markets(
             ),
             "market_type": market_type,
             "selection": selection,
+            "line": line,
             "minimum_fair_odds": (
                 minimum_fair_odds
             ),

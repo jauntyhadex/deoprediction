@@ -130,6 +130,7 @@ class PredictionMarketService:
         competition_status: str | None = None,
         market_type: str | None = None,
         selection: str | None = None,
+        line: float | None = None,
         minimum_fair_odds: float = 1.15,
         maximum_fair_odds: float = 8.0,
         minimum_probability: float = 0.0,
@@ -332,6 +333,13 @@ class PredictionMarketService:
             query = query.filter(
                 PredictionMarket.selection
                 == selection.upper()
+            )
+
+        if line is not None:
+
+            query = query.filter(
+                PredictionMarket.line
+                == line
             )
 
         query = query.filter(

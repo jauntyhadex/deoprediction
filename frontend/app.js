@@ -86,6 +86,13 @@ function clearMarketDate() {
   loadMarkets();
 }
 
+function setMarketOption(marketType, selection, line) {
+  document.getElementById("market-filter").value = marketType;
+  document.getElementById("market-selection").value = selection;
+  document.getElementById("market-line").value = line;
+  loadMarkets();
+}
+
 function messageCard(message) {
   return `<article class="card message"><p>${display(message)}</p></article>`;
 }
@@ -405,6 +412,8 @@ async function loadMarkets() {
   setLoading("markets", "Loading markets...");
 
   const market = document.getElementById("market-filter").value;
+  const selection = document.getElementById("market-selection").value;
+  const line = document.getElementById("market-line").value.trim();
   const selectedDate = document.getElementById("market-date").value;
 
   const params = new URLSearchParams({
@@ -414,6 +423,14 @@ async function loadMarkets() {
 
   if (market) {
     params.set("market_type", market);
+  }
+
+  if (selection) {
+    params.set("selection", selection);
+  }
+
+  if (line) {
+    params.set("line", line);
   }
 
   const marketDateRange = dateRangeParams(selectedDate);
