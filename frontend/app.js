@@ -70,6 +70,7 @@ function pickCard(pick) {
       <p><strong>${display(pick.market_type)}</strong>: ${display(pick.selection)} ${lineValue(pick.line)}</p>
       <p>Probability: <strong>${display(pick.probability)}%</strong> - Confidence: <strong>${display(pick.confidence)}%</strong></p>
       <p>Fair odds: <strong>${display(pick.fair_odds)}</strong> - Score: <strong>${display(pick.score)}</strong></p>
+      ${oddsWarning(pick.fair_odds)}
       <p class="muted">Competition status: ${display(pick.competition_status)}</p>
     </article>
   `;
@@ -86,10 +87,29 @@ function marketCard(market) {
       <p><strong>${display(market.market_type)}</strong>: ${display(market.selection)} ${lineValue(market.line)}</p>
       <p>Probability: <strong>${display(market.probability)}%</strong> - Market confidence: <strong>${display(market.market_confidence)}%</strong></p>
       <p>Fair odds: <strong>${display(market.fair_odds)}</strong> - Score: <strong>${display(market.score)}</strong></p>
+      ${oddsWarning(market.fair_odds)}
       <p>Fixture lean: <strong>${display(market.fixture_result)}</strong> - Gate: <strong>${display(market.quality_gate)}</strong></p>
       <p class="muted">Competition status: ${display(market.competition_status)}</p>
     </article>
   `;
+}
+
+function oddsWarning(fairOdds) {
+  const odds = Number(fairOdds);
+
+  if (!Number.isFinite(odds)) {
+    return "";
+  }
+
+  if (odds < 1.15) {
+    return `<p class="odds-warning">Very low odds. High probability, but weak betting value.</p>`;
+  }
+
+  if (odds < 1.30) {
+    return `<p class="odds-caution">Low odds. Better as a bet-builder leg, not a main pick.</p>`;
+  }
+
+  return "";
 }
 
 function selectionNames(selections) {
@@ -197,6 +217,7 @@ function fixtureMarketCard(market) {
       <p>Selection: <strong>${display(market.selection)}</strong> ${lineValue(market.line)}</p>
       <p>Probability: <strong>${display(market.probability)}%</strong></p>
       <p>Fair odds: <strong>${display(market.fair_odds)}</strong></p>
+      ${oddsWarning(market.fair_odds)}
       <p>Score: <strong>${display(market.score)}</strong></p>
       <p class="muted">Gate: ${display(market.quality_gate)}</p>
     </article>
