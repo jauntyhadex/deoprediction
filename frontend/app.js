@@ -46,6 +46,7 @@ function showPage(page) {
   document.getElementById("fixtures-page").classList.toggle("hidden", page !== "fixtures");
   document.getElementById("picks-page").classList.toggle("hidden", page !== "picks");
   document.getElementById("markets-page").classList.toggle("hidden", page !== "markets");
+  document.getElementById("competitions-page").classList.toggle("hidden", page !== "competitions");
 
   if (page === "fixtures") {
     loadFixtures();
@@ -57,6 +58,10 @@ function showPage(page) {
 
   if (page === "markets") {
     loadMarkets();
+  }
+
+  if (page === "competitions") {
+    loadCompetitions();
   }
 }
 
@@ -163,6 +168,43 @@ async function loadMarkets() {
 
   document.getElementById("markets").innerHTML =
     data.markets.map(marketCard).join("");
+}
+
+
+async function loadCompetitions() {
+  const search = document.getElementById("competition-search").value.trim();
+  const reliability = document.getElementById("competition-status").value;
+
+  const params = new URLSearchParams({
+    limit: "30",
+  });
+
+  if (search) {
+    params.set("search", search);
+  }
+
+  if (reliability) {
+    params.set("reliability_status", reliability);
+  }
+
+  const response = await fetch(`${API}/competitions?${params.toString()}`);
+  const data = await response.json();
+
+  document.getElementById("competitions").innerHTML =
+    data.competitions.map((competition) => `
+      <article class="card">
+        <div class="row">
+          <h3>${competition.name}</h3>
+          <span class="badge">${competition.reliability.status}</span>
+        </div>
+        <p class="muted">${competition.country} · ${competition.code}</p>
+        <p>Season: <strong>${competition.season}</strong></p>
+        <p>Evaluations: <strong>${competition.reliability.evaluations}</strong></p>
+        <p>Accuracy: <strong>${competition.reliability.accuracy}%</strong></p>
+        <p>Brier: <strong>${competition.reliability.brier}</strong></p>
+        <p class="muted">${competition.reliability.message}</p>
+      </article>
+    `).join("");
 }
 
 loadHome();

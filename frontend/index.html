@@ -15,6 +15,7 @@
         <button onclick="showPage('fixtures')">Fixtures</button>
         <button onclick="showPage('picks')">Top Picks</button>
         <button onclick="showPage('markets')">Top Markets</button>
+        <button onclick="showPage('competitions')">Competitions</button>
       </nav>
     </div>
 
@@ -109,6 +110,27 @@
 
       <div id="markets"></div>
     </section>
+
+    <section id="competitions-page" class="hidden">
+      <h2>Competitions</h2>
+
+      <div class="filters">
+        <input id="competition-search" placeholder="Search competition or country" />
+
+        <select id="competition-status">
+          <option value="">Any reliability</option>
+          <option value="RELIABLE">Reliable</option>
+          <option value="PROMISING">Promising</option>
+          <option value="LIMITED">Limited</option>
+          <option value="WEAK">Weak</option>
+        </select>
+
+        <button onclick="loadCompetitions()">Load competitions</button>
+      </div>
+
+      <div id="competitions"></div>
+    </section>
+
   </main>
 
   <script src="app.js"></script>
