@@ -15,10 +15,10 @@ function pickCard(pick) {
         <h3>${pick.home_team} vs ${pick.away_team}</h3>
         <span class="badge">${pick.grade}</span>
       </div>
-      <p class="muted">${pick.competition_name} · ${localTime(pick.kickoff_time)}</p>
+      <p class="muted">${pick.competition_name} - ${localTime(pick.kickoff_time)}</p>
       <p><strong>${pick.market_type}</strong>: ${pick.selection} ${lineValue(pick.line)}</p>
-      <p>Probability: <strong>${pick.probability}%</strong> · Confidence: <strong>${pick.confidence}%</strong></p>
-      <p>Fair odds: <strong>${pick.fair_odds}</strong> · Score: <strong>${pick.score}</strong></p>
+      <p>Probability: <strong>${pick.probability}%</strong> - Confidence: <strong>${pick.confidence}%</strong></p>
+      <p>Fair odds: <strong>${pick.fair_odds}</strong> - Score: <strong>${pick.score}</strong></p>
       <p class="muted">Competition status: ${pick.competition_status}</p>
     </article>
   `;
@@ -31,11 +31,11 @@ function marketCard(market) {
         <h3>${market.home_team} vs ${market.away_team}</h3>
         <span class="badge">${market.grade}</span>
       </div>
-      <p class="muted">${market.competition_name} · ${localTime(market.kickoff_time)}</p>
+      <p class="muted">${market.competition_name} - ${localTime(market.kickoff_time)}</p>
       <p><strong>${market.market_type}</strong>: ${market.selection} ${lineValue(market.line)}</p>
-      <p>Probability: <strong>${market.probability}%</strong> · Market confidence: <strong>${market.market_confidence}%</strong></p>
-      <p>Fair odds: <strong>${market.fair_odds}</strong> · Score: <strong>${market.score}</strong></p>
-      <p>Fixture lean: <strong>${market.fixture_result}</strong> · Gate: <strong>${market.quality_gate}</strong></p>
+      <p>Probability: <strong>${market.probability}%</strong> - Market confidence: <strong>${market.market_confidence}%</strong></p>
+      <p>Fair odds: <strong>${market.fair_odds}</strong> - Score: <strong>${market.score}</strong></p>
+      <p>Fixture lean: <strong>${market.fixture_result}</strong> - Gate: <strong>${market.quality_gate}</strong></p>
       <p class="muted">Competition status: ${market.competition_status}</p>
     </article>
   `;
@@ -197,12 +197,12 @@ async function loadCompetitions() {
           <h3>${competition.name}</h3>
           <span class="badge">${competition.reliability.status}</span>
         </div>
-        <p class="muted">${competition.country} � ${competition.code}</p>
+        <p class="muted">${competition.country} � ${competition.code}</p>
         <p>Season: <strong>${competition.season}</strong></p>
         <p>Evaluations: <strong>${competition.reliability.evaluations}</strong></p>
         <p>Accuracy: <strong>${competition.reliability.accuracy}%</strong></p>
         <p>Brier: <strong>${competition.reliability.brier}</strong></p>
-        <p class="muted">${competition.reliability.message}</p>
+        <p class="muted">${competition.reliability.status_message ?? competition.reliability.message ?? ""}</p>
       </article>
     `).join("");
 }
