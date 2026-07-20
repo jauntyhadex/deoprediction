@@ -135,6 +135,7 @@ function showPage(page) {
   document.getElementById("competitions-page").classList.toggle("hidden", page !== "competitions");
   document.getElementById("teams-page").classList.toggle("hidden", page !== "teams");
   document.getElementById("catalog-page").classList.toggle("hidden", page !== "catalog");
+  document.getElementById("builder-page").classList.toggle("hidden", page !== "builder");
 
   if (page === "fixtures") loadFixtures();
   if (page === "picks") loadPicks();
@@ -142,6 +143,7 @@ function showPage(page) {
   if (page === "competitions") loadCompetitions();
   if (page === "teams") loadTeams();
   if (page === "catalog") loadCatalog();
+  if (page === "builder") loadBuilderFixtures();
 }
 
 async function loadHome() {
@@ -379,6 +381,159 @@ async function loadTeams() {
     `);
   } catch (error) {
     setError("teams", error.message);
+  }
+}
+
+
+function marketLegLabel(market) {
+  return `${display(market.market_type)}: ${display(market.selection)} ${lineValue(market.line)}`;
+}
+
+function findMarket(markets, marketType, selection, line = null) {
+  return markets.find((market) => {
+    const sameType = market.market_type === marketType;
+    const sameSelection = market.selection === selection;
+    const sameLine = line === null || Number(market.line) === Number(line);
+    return sameType && sameSelection && sameLine;
+  });
+}
+
+function topUsefulMarkets(markets, count = 3) {
+  return markets
+    .filter((market) => Number(market.fair_odds) >= 1.15)
+    .filter((market) => Number(market.probability) >= 60)
+    .slice(0, count);
+}
+
+function comboOdds(legs) {
+  const total = legs.reduce((value, leg) => value * Number(leg.fair_odds || 1), 1);
+  return total.toFixed(2);
+}
+
+function builderComboCard(title, note, legs) {
+  return `
+    <article class="card builder-combo">
+      <h3>${display(title)}</h3>
+      <p class="muted">${display(note)}</p>
+      <p>Estimated combined fair odds: <strong>${comboOdds(legs)}</strong></p>
+      ${legs.map((leg) => `
+        <div class="builder-leg">
+          <strong>${marketLegLabel(leg)}</strong>
+          <p>Probability: ${display(leg.probability)}% - Fair odds: ${display(leg.fair_odds)} - Grade: ${display(leg.grade)}</p>
+          ${oddsWarning(leg.fair_odds)}
+        </div>
+      `).join("")}
+    </article>
+  `;
+}
+
+function buildBetBuilderCombos(markets) {
+  const combos = [];
+  const useful = topUsefulMarkets(markets, 3);
+
+  if (useful.length >= 2) {
+    combos.push({
+      title: "Top Value Builder",
+      note: "Uses the strongest markets with usable fair odds.",
+      legs: useful.slice(0, Math.min(3, useful.length)),
+    });
+  }
+
+  const over15 = findMarket(markets, "TOTAL_GOALS", "OVER", 1.5);
+  const doubleChanceHome = findMarket(markets, "DOUBLE_CHANCE", "HOME_OR_DRAW");
+  const doubleChanceAway = findMarket(markets, "DOUBLE_CHANCE", "DRAW_OR_AWAY");
+  const doubleChanceEither = doubleChanceAway ?? doubleChanceHome;
+
+  if (over15 && doubleChanceEither) {
+    combos.push({
+      title: "Safer Result + Goals",
+      note: "Combines a result-protection leg with a goals leg.",
+      legs: [doubleChanceEither, over15],
+    });
+  }
+
+  const bttsYes = findMarket(markets, "BTTS", "YES");
+  const bttsNo = findMarket(markets, "BTTS", "NO");
+  const bttsBest = [bttsYes, bttsNo]
+    .filter(Boolean)
+    .sort((a, b) => Number(b.probability) - Number(a.probability))[0];
+
+  if (bttsBest && over15) {
+    combos.push({
+      title: "Goals Builder",
+      note: "Combines BTTS direction with total goals.",
+      legs: [bttsBest, over15],
+    });
+  }
+
+  const secondHalfOver = findMarket(markets, "SECOND_HALF_TOTAL_GOALS", "OVER", 0.5);
+  const firstHalfOver = findMarket(markets, "FIRST_HALF_TOTAL_GOALS", "OVER", 0.5);
+
+  if (firstHalfOver && secondHalfOver) {
+    combos.push({
+      title: "Half Goals Builder",
+      note: "Uses first-half and second-half goal markets.",
+      legs: [firstHalfOver, secondHalfOver],
+    });
+  }
+
+  return combos;
+}
+
+async function loadBuilderFixtures() {
+  setLoading("builder-fixtures", "Loading fixtures...");
+  document.getElementById("builder-results").innerHTML = "";
+
+  const search = document.getElementById("builder-search").value.trim();
+
+  const params = new URLSearchParams({
+    limit: "12",
+    upcoming_only: "true",
+  });
+
+  if (search) params.set("search", search);
+
+  try {
+    const data = await fetchJson(`${API}/fixtures?${params.toString()}`);
+
+    renderCards("builder-fixtures", data.fixtures, "No fixtures found.", (fixture) => `
+      <article class="card">
+        <h3>${display(fixture.home_team?.name)} vs ${display(fixture.away_team?.name)}</h3>
+        <p class="muted">${display(fixture.competition?.name)} - ${localTime(fixture.kickoff_time)}</p>
+        <p>Status: <strong>${display(fixture.status)}</strong></p>
+        <button onclick="loadBetBuilder(${fixture.id})">Build suggestions</button>
+      </article>
+    `);
+  } catch (error) {
+    setError("builder-fixtures", error.message);
+  }
+}
+
+async function loadBetBuilder(fixtureId) {
+  setLoading("builder-results", "Building bet builder suggestions...");
+
+  try {
+    const data = await fetchJson(`${API}/prediction-picks/fixture/${fixtureId}?market_limit=100`);
+    const markets = data.markets ?? [];
+    const first = markets[0] ?? (data.picks ?? [])[0] ?? {};
+    const combos = buildBetBuilderCombos(markets);
+
+    document.getElementById("builder-results").innerHTML = `
+      <h2>Builder Suggestions</h2>
+
+      <article class="card detail-card">
+        <h3>${display(first.home_team)} vs ${display(first.away_team)}</h3>
+        <p class="muted">${display(first.competition_name)} - ${localTime(first.kickoff_time)}</p>
+        <p>Fixture lean: <strong>${display(first.fixture_result, "Not available")}</strong></p>
+        <p>Markets checked: <strong>${display(markets.length)}</strong></p>
+      </article>
+
+      ${combos.length > 0 ? combos.map((combo) => builderComboCard(combo.title, combo.note, combo.legs)).join("") : messageCard("No builder suggestions found for this fixture.")}
+    `;
+
+    document.getElementById("builder-results").scrollIntoView({ behavior: "smooth" });
+  } catch (error) {
+    setError("builder-results", error.message);
   }
 }
 

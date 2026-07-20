@@ -18,6 +18,7 @@
         <button onclick="showPage('competitions')">Competitions</button>
         <button onclick="showPage('teams')">Teams</button>
         <button onclick="showPage('catalog')">Market Catalog</button>
+        <button onclick="showPage('builder')">Bet Builder</button>
       </nav>
     </div>
 
@@ -135,6 +136,20 @@
       <h2>Market Catalog</h2>
       <p class="page-note">Available football markets in the current system. More markets like corners, cards, and player props will be added later.</p>
       <div id="catalog"></div>
+    </section>
+
+
+    <section id="builder-page" class="hidden">
+      <h2>Bet Builder</h2>
+      <p class="page-note">Prototype football bet builders from fixture market probabilities. These are suggestions, not guarantees. Very low odds are better used as supporting legs.</p>
+
+      <div class="filters">
+        <input id="builder-search" placeholder="Search team or competition" />
+        <button onclick="loadBuilderFixtures()">Find fixtures</button>
+      </div>
+
+      <div id="builder-fixtures"></div>
+      <div id="builder-results"></div>
     </section>
 
   </main>

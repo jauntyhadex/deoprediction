@@ -153,3 +153,15 @@ button {
   border-radius: 10px;
   padding: 8px 10px;
 }
+
+
+.builder-combo {
+  border-color: rgba(116, 223, 162, 0.4);
+}
+
+.builder-leg {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+}
