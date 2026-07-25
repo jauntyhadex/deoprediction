@@ -872,19 +872,19 @@ function filterAccumulatorMarketsByGroup(markets, group) {
 function accumulatorQualityRules(quality) {
   const rules = {
     balanced: {
-      minimumOdds: 1.20,
+      minimumOdds: 1.15,
       maximumOdds: 5.00,
-      minimumProbability: 40,
-      minimumConfidence: 25,
-      grades: ["A+", "A", "B"],
+      minimumProbability: 35,
+      minimumConfidence: 0,
+      grades: ["A+", "A", "B", "C", "D", "E"],
       label: "Balanced slip",
     },
     high_odds: {
-      minimumOdds: 1.25,
+      minimumOdds: 1.20,
       maximumOdds: 8.00,
-      minimumProbability: 30,
-      minimumConfidence: 20,
-      grades: ["A+", "A", "B", "C"],
+      minimumProbability: 25,
+      minimumConfidence: 0,
+      grades: ["A+", "A", "B", "C", "D", "E"],
       label: "High-odds slip",
     },
     extreme: {
@@ -979,7 +979,7 @@ async function loadAccumulator() {
     minimum_fair_odds: "1.15",
     maximum_fair_odds: "10.00",
     minimum_probability: "25",
-    minimum_market_confidence: "20",
+    minimum_market_confidence: "0",
   });
 
   if (accumulatorCompetitionId) params.set("competition_id", accumulatorCompetitionId);
