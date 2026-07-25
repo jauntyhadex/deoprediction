@@ -157,10 +157,32 @@ function renderCards(containerId, items, emptyMessage, cardBuilder) {
 
 async function fetchJson(url) {
   const response = await fetch(url);
-  const data = await response.json();
+  const responseText = await response.text();
+
+  let data = null;
+
+  try {
+    data = responseText ? JSON.parse(responseText) : null;
+  } catch {
+    data = responseText;
+  }
 
   if (!response.ok) {
-    throw new Error(data.detail || `Request failed with status ${response.status}`);
+    let message = data;
+
+    if (data && typeof data === "object") {
+      if (Array.isArray(data.detail)) {
+        message = data.detail
+          .map((item) => item.msg || JSON.stringify(item))
+          .join("; ");
+      } else if (data.detail) {
+        message = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail);
+      } else {
+        message = JSON.stringify(data);
+      }
+    }
+
+    throw new Error(message || `Request failed with status ${response.status}`);
   }
 
   return data;
@@ -792,7 +814,7 @@ async function loadAccumulator() {
   updateDateLabel("accumulator-date-label", selectedDate);
 
   const params = new URLSearchParams({
-    limit: "200",
+    limit: "100",
     upcoming_only: "true",
     one_per_fixture: mode === "safer" ? "true" : "false",
     minimum_fair_odds: "1.15",
