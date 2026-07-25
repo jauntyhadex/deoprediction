@@ -281,3 +281,46 @@ Build after football, basketball, and tennis core systems are ready.
 ## Production website
 
 Build final production website after backend sports are stable.
+
+## Tomorrow priority: free advanced football markets
+
+Hard rule:
+- Use only free data sources.
+- No paid API dependency.
+- Public launch can be limited to 5 users.
+- Cache provider data in our own database so users do not burn API calls.
+- Keep local running option with backend, frontend, and command terminals.
+
+Advanced football data source target:
+- Keep football-data.org for fixtures, teams, leagues, base match data.
+- Add API-Football free tier for advanced football data where available.
+- Use free daily quota carefully.
+- Import/cache data through scripts, not direct user clicks.
+
+Markets to activate before basketball:
+- Corners over/under
+- Team corners
+- Cards over/under
+- Team cards
+- Player cards
+- Fouls
+- Tackles
+- Shots
+- Shots on target
+- Player shots
+- Anytime goalscorer
+- First goalscorer
+- Goalkeeper saves
+- Team to score 3 goals in a row
+- Long accumulator mixed football slips
+
+Implementation order:
+1. Research free API-Football endpoints and limits.
+2. Add provider config to .env.example.
+3. Add database tables for advanced fixture stats, team stats, and player stats.
+4. Add importer script with strict request-limit protection.
+5. Generate new football markets only from cached real data.
+6. Activate advanced groups in Accumulators.
+7. Make Accumulator the main public long-slip tool.
+8. Start basketball only after this football upgrade is protected.
+
