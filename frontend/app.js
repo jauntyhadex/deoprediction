@@ -740,6 +740,8 @@ async function loadBuilderFixtures() {
 
   const search = document.getElementById("builder-search")?.value.trim() || "";
   const builderCompetitionId = document.getElementById("builder-competition")?.value || "";
+  const builderCompetitionSelect = document.getElementById("builder-competition");
+  const builderCompetitionLabel = builderCompetitionSelect?.selectedOptions?.[0]?.textContent || "All competitions";
 
   const params = new URLSearchParams({
     limit: "50",
@@ -753,7 +755,11 @@ async function loadBuilderFixtures() {
     const data = await fetchJson(`${API}/fixtures?${params.toString()}`);
     const fixtures = Array.isArray(data.fixtures) ? sortByKickoff(data.fixtures) : [];
 
-    renderCards("builder-fixtures", fixtures, "No fixtures found for this competition/search.", (fixture) => `
+    const emptyBuilderMessage = builderCompetitionId
+      ? `No upcoming fixtures found for ${builderCompetitionLabel}. This usually means the competition has no upcoming fixtures in the current database.`
+      : "No fixtures found for this search.";
+
+    renderCards("builder-fixtures", fixtures, emptyBuilderMessage, (fixture) => `
       <article class="card">
         <h3>${display(fixture.home_team?.name)} vs ${display(fixture.away_team?.name)}</h3>
         <p class="muted">${display(fixture.competition?.name)} - ${localTime(fixture.kickoff_time)}</p>
@@ -1019,7 +1025,11 @@ async function loadAccumulator() {
         <p class="muted">Football only now. Mixed football, basketball, tennis, and table tennis slips will come after those sports are added.</p>
       </article>
 
-      ${legs.length > 0 ? legs.map(accumulatorLegCard).join("") : messageCard("No accumulator legs found for this date.")}
+      ${legs.length > 0
+        ? legs.map(accumulatorLegCard).join("")
+        : messageCard(competitionLabel !== "All competitions"
+            ? `No accumulator legs found for ${competitionLabel}. This competition may have no upcoming fixtures or no eligible prediction markets in the current database.`
+            : "No accumulator legs found for this date.")}
     `;
   } catch (error) {
     setError("accumulator-results", error.message);
