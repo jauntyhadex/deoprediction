@@ -323,6 +323,20 @@
           <option value="aggressive">Aggressive: multiple legs per game</option>
         </select>
 
+        <select id="accumulator-quality" onchange="loadAccumulator()">
+          <option value="balanced">Balanced slip</option>
+          <option value="high_odds">High-odds slip</option>
+          <option value="extreme">Extreme slip</option>
+        </select>
+
+        <select id="accumulator-max-legs" onchange="loadAccumulator()">
+          <option value="10">Max 10 legs</option>
+          <option value="15" selected>Max 15 legs</option>
+          <option value="20">Max 20 legs</option>
+          <option value="30">Max 30 legs</option>
+          <option value="40">Max 40 legs</option>
+        </select>
+
         <select id="accumulator-market-group">
           <option value="all">All current football markets</option>
           <option value="goals">Goals markets</option>

@@ -864,18 +864,52 @@ function filterAccumulatorMarketsByGroup(markets, group) {
   return markets.filter((market) => allowedTypes.includes(market.market_type));
 }
 
-function chooseAccumulatorLegs(markets, targetOdds, mode, group) {
+function accumulatorQualityRules(quality) {
+  const rules = {
+    balanced: {
+      minimumOdds: 1.20,
+      maximumOdds: 5.00,
+      minimumProbability: 40,
+      minimumConfidence: 25,
+      grades: ["A+", "A", "B"],
+      label: "Balanced slip",
+    },
+    high_odds: {
+      minimumOdds: 1.25,
+      maximumOdds: 8.00,
+      minimumProbability: 30,
+      minimumConfidence: 20,
+      grades: ["A+", "A", "B", "C"],
+      label: "High-odds slip",
+    },
+    extreme: {
+      minimumOdds: 1.15,
+      maximumOdds: 10.00,
+      minimumProbability: 25,
+      minimumConfidence: 0,
+      grades: ["A+", "A", "B", "C", "D", "E"],
+      label: "Extreme slip",
+    },
+  };
+
+  return rules[quality] || rules.balanced;
+}
+
+function chooseAccumulatorLegs(markets, targetOdds, mode, group, quality, maxLegs) {
   const target = Number(targetOdds);
+  const limit = Number(maxLegs || 15);
+  const rules = accumulatorQualityRules(quality);
   const usedFixtures = new Set();
   const usedMarketKeys = new Set();
   const legs = [];
   let total = 1;
 
   const sorted = sortByKickoff(filterAccumulatorMarketsByGroup(markets, group))
-    .filter((market) => Number(market.fair_odds) >= 1.15)
-    .filter((market) => Number(market.fair_odds) <= 10.00)
-    .filter((market) => Number(market.probability) >= 25)
-    .filter((market) => ["A+", "A", "B", "C"].includes(market.grade))
+    .filter((market) => Number(market.fair_odds) >= rules.minimumOdds)
+    .filter((market) => Number(market.fair_odds) <= rules.maximumOdds)
+    .filter((market) => Number(market.probability) >= rules.minimumProbability)
+    .filter((market) => Number(market.market_confidence) >= rules.minimumConfidence)
+    .filter((market) => rules.grades.includes(market.grade))
     .sort((a, b) => Number(b.fair_odds || 0) - Number(a.fair_odds || 0));
 
   for (const market of sorted) {
@@ -894,7 +928,7 @@ function chooseAccumulatorLegs(markets, targetOdds, mode, group) {
     usedMarketKeys.add(marketKey);
     total *= Number(market.fair_odds || 1);
 
-    if (total >= target || legs.length >= 40) {
+    if (total >= target || legs.length >= limit) {
       break;
     }
   }
@@ -924,6 +958,8 @@ async function loadAccumulator() {
 
   const targetOdds = document.getElementById("accumulator-target").value;
   const mode = document.getElementById("accumulator-mode").value;
+  const quality = document.getElementById("accumulator-quality").value;
+  const maxLegs = document.getElementById("accumulator-max-legs").value;
   const marketGroup = document.getElementById("accumulator-market-group").value;
   const accumulatorCompetitionId = document.getElementById("accumulator-competition")?.value || "";
   const selectedDate = document.getElementById("accumulator-date").value;
@@ -952,7 +988,7 @@ async function loadAccumulator() {
   try {
     const data = await fetchJson(`${API}/prediction-picks/markets/top?${params.toString()}`);
     const markets = Array.isArray(data.markets) ? data.markets : [];
-    const legs = chooseAccumulatorLegs(markets, targetOdds, mode, marketGroup);
+    const legs = chooseAccumulatorLegs(markets, targetOdds, mode, marketGroup, quality, maxLegs);
     const combinedOdds = accumulatorCombinedOdds(legs);
     const reachedTarget = combinedOdds >= Number(targetOdds);
 
@@ -961,8 +997,9 @@ async function loadAccumulator() {
         <h3>Target ${display(targetOdds)} odds</h3>
         <p>Estimated combined fair odds: <strong>${combinedOdds.toFixed(2)}</strong></p>
         <p>Mode: <strong>${mode === "safer" ? "Safer - one leg per game" : "Aggressive - multiple legs per game"}</strong></p>
+        <p>Slip style: <strong>${display(accumulatorQualityRules(quality).label)}</strong></p>
         <p>Market group: <strong>${display(marketGroup.replaceAll("_", " "))}</strong></p>
-        <p>Legs selected: <strong>${legs.length}</strong></p>
+        <p>Legs selected: <strong>${legs.length}</strong> / max ${display(maxLegs)}</p>
         <p class="${Number(targetOdds) >= 2000 ? "risk-warning" : "risk-caution"}">${display(accumulatorRiskText(targetOdds))}</p>
         <p class="muted">${reachedTarget ? "Target reached from current available markets." : "Target not reached from current available markets. This is the best available attempt with current filters."}</p>
         <p class="muted">Football only now. Mixed football, basketball, tennis, and table tennis slips will come after those sports are added.</p>
