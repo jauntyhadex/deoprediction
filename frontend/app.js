@@ -738,20 +738,23 @@ async function loadBuilderFixtures() {
   setLoading("builder-fixtures", "Loading fixtures...");
   document.getElementById("builder-results").innerHTML = "";
 
-  const search = document.getElementById("builder-search").value.trim();
+  const search = document.getElementById("builder-search")?.value.trim() || "";
   const builderCompetitionId = document.getElementById("builder-competition")?.value || "";
 
   const params = new URLSearchParams({
-    limit: "12",
+    limit: "50",
     upcoming_only: "true",
+    days_ahead: "120",
   });
 
+  if (builderCompetitionId) params.set("competition_id", builderCompetitionId);
   if (search) params.set("search", search);
 
   try {
     const data = await fetchJson(`${API}/fixtures?${params.toString()}`);
+    const fixtures = Array.isArray(data.fixtures) ? sortByKickoff(data.fixtures) : [];
 
-    renderCards("builder-fixtures", data.fixtures, "No fixtures found.", (fixture) => `
+    renderCards("builder-fixtures", fixtures, "No fixtures found for this competition/search.", (fixture) => `
       <article class="card">
         <h3>${display(fixture.home_team?.name)} vs ${display(fixture.away_team?.name)}</h3>
         <p class="muted">${display(fixture.competition?.name)} - ${localTime(fixture.kickoff_time)}</p>
@@ -763,6 +766,8 @@ async function loadBuilderFixtures() {
     setError("builder-fixtures", error.message);
   }
 }
+
+
 
 async function loadBetBuilder(fixtureId) {
   setLoading("builder-results", "Building bet builder suggestions...");
