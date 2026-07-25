@@ -179,6 +179,36 @@ Needed:
 - Table tennis markets
 - Table tennis frontend pages
 
+
+## Accumulator and Mixed Games Builder
+
+Build high-odds slips after core markets are reliable.
+
+Targets:
+- 100 odds
+- 2000 odds
+- 10000 odds
+- Custom target odds later
+
+Supported slip types:
+- Football-only slips
+- Basketball-only slips
+- Tennis-only slips
+- Table-tennis-only slips
+- Mixed-sport slips
+- Safer accumulators
+- High-risk accumulators
+- Extreme-risk long-shot accumulators
+
+Rules:
+- Label 100 odds as high risk.
+- Label 2000 odds as very high risk.
+- Label 10000 odds as extreme risk.
+- Do not hide weak picks, but clearly label weak competition/data risk.
+- Prefer one leg per match unless the user chooses bet-builder mode.
+- Show estimated combined fair odds.
+- Show each leg's market, probability, grade, risk label, and kickoff date.
+
 ## Bet Builders
 
 Build after core markets are reliable.

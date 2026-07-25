@@ -268,6 +268,7 @@ function showPage(page) {
   document.getElementById("catalog-page").classList.toggle("hidden", page !== "catalog");
   document.getElementById("builder-page").classList.toggle("hidden", page !== "builder");
   document.getElementById("guide-page").classList.toggle("hidden", page !== "guide");
+  document.getElementById("accumulator-page").classList.toggle("hidden", page !== "accumulator");
 
   if (page === "fixtures") loadFixtures();
   if (page === "picks") loadPicks();
@@ -275,6 +276,7 @@ function showPage(page) {
   if (page === "competitions") loadCompetitions();
   if (page === "teams") loadTeams();
   if (page === "catalog") loadCatalog();
+  if (page === "accumulator") loadAccumulator();
   if (page === "builder") loadBuilderFixtures();
 }
 
@@ -652,6 +654,130 @@ async function loadBetBuilder(fixtureId) {
     document.getElementById("builder-results").scrollIntoView({ behavior: "smooth" });
   } catch (error) {
     setError("builder-results", error.message);
+  }
+}
+
+
+function setAccumulatorDate(daysFromToday) {
+  document.getElementById("accumulator-date").value = dateInputValue(daysFromToday);
+  loadAccumulator();
+}
+
+function clearAccumulatorDate() {
+  document.getElementById("accumulator-date").value = "";
+  loadAccumulator();
+}
+
+function accumulatorRiskText(targetOdds) {
+  const target = Number(targetOdds);
+
+  if (target >= 10000) {
+    return "Extreme risk. This kind of slip is very unlikely to land and should only be viewed as a long-shot idea.";
+  }
+
+  if (target >= 2000) {
+    return "Very high risk. Many things must go right for this to land.";
+  }
+
+  return "High risk. This is still an accumulator, not a safe pick.";
+}
+
+function accumulatorCombinedOdds(legs) {
+  return legs.reduce((total, leg) => total * Number(leg.fair_odds || 1), 1);
+}
+
+function chooseAccumulatorLegs(markets, targetOdds) {
+  const target = Number(targetOdds);
+  const usedFixtures = new Set();
+  const legs = [];
+  let total = 1;
+
+  const sorted = sortByKickoff(markets)
+    .filter((market) => Number(market.fair_odds) >= 1.20)
+    .filter((market) => Number(market.fair_odds) <= 6.00)
+    .filter((market) => Number(market.probability) >= 40)
+    .filter((market) => ["A+", "A", "B"].includes(market.grade));
+
+  for (const market of sorted) {
+    if (usedFixtures.has(market.fixture_id)) {
+      continue;
+    }
+
+    legs.push(market);
+    usedFixtures.add(market.fixture_id);
+    total *= Number(market.fair_odds || 1);
+
+    if (total >= target || legs.length >= 30) {
+      break;
+    }
+  }
+
+  return legs;
+}
+
+function accumulatorLegCard(leg, index) {
+  return `
+    <article class="card">
+      <div class="row">
+        <h3>Leg ${index + 1}: ${display(leg.home_team)} vs ${display(leg.away_team)}</h3>
+        <span class="badge">${display(leg.grade)}</span>
+      </div>
+      <p class="muted">${display(leg.competition_name)} - ${localTime(leg.kickoff_time)}</p>
+      <p><strong>${display(leg.market_type)}</strong>: ${display(leg.selection)} ${lineValue(leg.line)}</p>
+      <p>Probability: <strong>${display(leg.probability)}%</strong> - Fair odds: <strong>${display(leg.fair_odds)}</strong></p>
+      <p>Score: <strong>${display(leg.score)}</strong> - Gate: <strong>${display(leg.quality_gate)}</strong></p>
+      ${oddsWarning(leg.fair_odds)}
+      ${reliabilityWarning(leg.competition_status, leg.competition_status_message)}
+    </article>
+  `;
+}
+
+async function loadAccumulator() {
+  setLoading("accumulator-results", "Building accumulator slip...");
+
+  const targetOdds = document.getElementById("accumulator-target").value;
+  const selectedDate = document.getElementById("accumulator-date").value;
+
+  updateDateLabel("accumulator-date-label", selectedDate);
+
+  const params = new URLSearchParams({
+    limit: "100",
+    upcoming_only: "true",
+    one_per_fixture: "true",
+    minimum_fair_odds: "1.20",
+    maximum_fair_odds: "6.00",
+    minimum_probability: "40",
+    minimum_market_confidence: "30",
+  });
+
+  const accumulatorDateRange = dateRangeParams(selectedDate);
+  if (accumulatorDateRange) {
+    params.set("date_from", accumulatorDateRange.date_from);
+    params.set("date_to", accumulatorDateRange.date_to);
+    params.set("upcoming_only", "false");
+  }
+
+  try {
+    const data = await fetchJson(`${API}/prediction-picks/markets/top?${params.toString()}`);
+    const markets = Array.isArray(data.markets) ? data.markets : [];
+    const legs = chooseAccumulatorLegs(markets, targetOdds);
+    const combinedOdds = accumulatorCombinedOdds(legs);
+    const reachedTarget = combinedOdds >= Number(targetOdds);
+
+    document.getElementById("accumulator-results").innerHTML = `
+      <article class="card detail-card">
+        <h3>Target ${display(targetOdds)} odds</h3>
+        <p>Estimated combined fair odds: <strong>${combinedOdds.toFixed(2)}</strong></p>
+        <p>Legs selected: <strong>${legs.length}</strong></p>
+        <p class="${Number(targetOdds) >= 2000 ? "risk-warning" : "risk-caution"}">${display(accumulatorRiskText(targetOdds))}</p>
+        <p class="muted">${reachedTarget ? "Target reached from current available markets." : "Target not reached from current available markets. This is the best available attempt with current filters."}</p>
+        <p class="muted">Football only now. Mixed football, basketball, tennis, and table tennis slips will come after those sports are added.</p>
+      </article>
+
+      ${legs.length > 0 ? legs.map(accumulatorLegCard).join("") : messageCard("No accumulator legs found for this date.")}
+    `;
+  } catch (error) {
+    setError("accumulator-results", error.message);
   }
 }
 

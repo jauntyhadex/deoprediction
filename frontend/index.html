@@ -20,6 +20,7 @@
         <button onclick="showPage('catalog')">Market Catalog</button>
         <button onclick="showPage('builder')">Bet Builder</button>
         <button onclick="showPage('guide')">Guide</button>
+        <button onclick="showPage('accumulator')">Accumulators</button>
       </nav>
     </div>
 
@@ -272,6 +273,37 @@
           <p>Builders are suggestions, not guaranteed profit.</p>
         </article>
       </div>
+    </section>
+
+
+    <section id="accumulator-page" class="hidden">
+      <h2>Accumulator Builder</h2>
+      <p class="page-note">Build high-odds slips from approved market probabilities. 100 odds, 2000 odds, and 10000 odds are very risky, so the app will label them clearly.</p>
+
+      <div class="filters">
+        <select id="accumulator-target">
+          <option value="100">Target 100 odds</option>
+          <option value="2000">Target 2000 odds</option>
+          <option value="10000">Target 10000 odds</option>
+        </select>
+
+        <select id="accumulator-sport">
+          <option value="football">Football only for now</option>
+          <option value="mixed" disabled>Mixed sports later</option>
+          <option value="basketball" disabled>Basketball later</option>
+          <option value="tennis" disabled>Tennis later</option>
+          <option value="table_tennis" disabled>Table tennis later</option>
+        </select>
+
+        <input id="accumulator-date" type="date" />
+        <button onclick="setAccumulatorDate(0)">Today</button>
+        <button onclick="setAccumulatorDate(1)">Tomorrow</button>
+        <button onclick="clearAccumulatorDate()">All dates</button>
+        <button onclick="loadAccumulator()">Build slip</button>
+      </div>
+
+      <p id="accumulator-date-label" class="page-note"></p>
+      <div id="accumulator-results"></div>
     </section>
 
   </main>
