@@ -280,6 +280,34 @@ function selectionNames(selections) {
     .join(", ");
 }
 
+
+async function loadCompetitionSelect(selectId, allLabel = "All competitions") {
+  const select = document.getElementById(selectId);
+
+  if (!select || select.dataset.loaded === "true") {
+    return;
+  }
+
+  const currentValue = select.value;
+
+  try {
+    const data = await fetchJson(`${API}/competitions?limit=100`);
+    const competitions = Array.isArray(data.competitions) ? data.competitions : [];
+
+    select.innerHTML = `<option value="">${display(allLabel)}</option>` + competitions
+      .map((competition) => {
+        const label = `${competition.code || ""} - ${competition.name || ""}`.trim();
+        return `<option value="${escapeHtml(competition.id)}">${display(label)}</option>`;
+      })
+      .join("");
+
+    select.value = currentValue;
+    select.dataset.loaded = "true";
+  } catch (error) {
+    console.warn(`Could not load competitions for ${selectId}`, error);
+  }
+}
+
 function showPage(page) {
   document.getElementById("home-page").classList.toggle("hidden", page !== "home");
   document.getElementById("fixtures-page").classList.toggle("hidden", page !== "fixtures");
@@ -299,8 +327,13 @@ function showPage(page) {
   if (page === "competitions") loadCompetitions();
   if (page === "teams") loadTeams();
   if (page === "catalog") loadCatalog();
-  if (page === "accumulator") loadAccumulator();
-  if (page === "builder") loadBuilderFixtures();
+  if (page === "accumulator") {
+    loadCompetitionSelect("accumulator-competition").finally(loadAccumulator);
+  }
+
+  if (page === "builder") {
+    loadCompetitionSelect("builder-competition").finally(loadBuilderFixtures);
+  }
 }
 
 async function loadHome() {
@@ -347,6 +380,7 @@ async function loadFixtures() {
     upcoming_only: String(upcomingOnly),
   });
 
+  if (builderCompetitionId) params.set("competition_id", builderCompetitionId);
   if (search) params.set("search", search);
   if (status) params.set("status", status);
 
@@ -705,6 +739,7 @@ async function loadBuilderFixtures() {
   document.getElementById("builder-results").innerHTML = "";
 
   const search = document.getElementById("builder-search").value.trim();
+  const builderCompetitionId = document.getElementById("builder-competition")?.value || "";
 
   const params = new URLSearchParams({
     limit: "12",
@@ -890,6 +925,7 @@ async function loadAccumulator() {
   const targetOdds = document.getElementById("accumulator-target").value;
   const mode = document.getElementById("accumulator-mode").value;
   const marketGroup = document.getElementById("accumulator-market-group").value;
+  const accumulatorCompetitionId = document.getElementById("accumulator-competition")?.value || "";
   const selectedDate = document.getElementById("accumulator-date").value;
 
   updateDateLabel("accumulator-date-label", selectedDate);
@@ -903,6 +939,8 @@ async function loadAccumulator() {
     minimum_probability: "25",
     minimum_market_confidence: "20",
   });
+
+  if (accumulatorCompetitionId) params.set("competition_id", accumulatorCompetitionId);
 
   const accumulatorDateRange = dateRangeParams(selectedDate);
   if (accumulatorDateRange) {

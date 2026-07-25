@@ -228,6 +228,10 @@
       <p class="page-note">Prototype football bet builders from fixture market probabilities. These are suggestions, not guarantees. Very low odds are better used as supporting legs.</p>
 
       <div class="filters">
+        <select id="builder-competition" onchange="loadBuilderFixtures()">
+          <option value="">All competitions</option>
+        </select>
+
         <input id="builder-search" placeholder="Search team or competition" />
         <button onclick="loadBuilderFixtures()">Find fixtures</button>
       </div>
@@ -308,6 +312,10 @@
           <option value="basketball" disabled>Basketball later</option>
           <option value="tennis" disabled>Tennis later</option>
           <option value="table_tennis" disabled>Table tennis later</option>
+        </select>
+
+        <select id="accumulator-competition" onchange="loadAccumulator()">
+          <option value="">All competitions</option>
         </select>
 
         <select id="accumulator-mode">
