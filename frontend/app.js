@@ -994,6 +994,8 @@ async function loadAccumulator() {
     const markets = Array.isArray(data.markets) ? data.markets : [];
     const legs = chooseAccumulatorLegs(markets, targetOdds, mode, marketGroup, quality, maxLegs);
     const combinedOdds = accumulatorCombinedOdds(legs);
+    const competitionSelect = document.getElementById("accumulator-competition");
+    const competitionLabel = competitionSelect?.selectedOptions?.[0]?.textContent || "All competitions";
     const reachedTarget = combinedOdds >= Number(targetOdds);
 
     document.getElementById("accumulator-results").innerHTML = `
@@ -1002,6 +1004,7 @@ async function loadAccumulator() {
         <p>Estimated combined fair odds: <strong>${combinedOdds.toFixed(2)}</strong></p>
         <p>Mode: <strong>${mode === "safer" ? "Safer - one leg per game" : "Aggressive - multiple legs per game"}</strong></p>
         <p>Slip style: <strong>${display(accumulatorQualityRules(quality).label)}</strong></p>
+        <p>Competition: <strong>${display(competitionLabel)}</strong></p>
         <p>Market group: <strong>${display(marketGroup.replaceAll("_", " "))}</strong></p>
         <p>Legs selected: <strong>${legs.length}</strong> / max ${display(maxLegs)}</p>
         <p class="${Number(targetOdds) >= 2000 ? "risk-warning" : "risk-caution"}">${display(accumulatorRiskText(targetOdds))}</p>
