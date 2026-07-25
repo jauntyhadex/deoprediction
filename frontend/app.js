@@ -619,6 +619,87 @@ async function loadTeams(append = false) {
   }
 }
 
+
+function marketLegLabel(market) {
+  return `${display(market.market_type)}: ${display(market.selection)} ${lineValue(market.line)}`;
+}
+
+function comboOdds(legs) {
+  return legs.reduce((total, leg) => total * Number(leg.fair_odds || 1), 1);
+}
+
+function topValueMarkets(markets) {
+  return sortByKickoff(markets)
+    .filter((market) => Number(market.fair_odds) >= 1.30)
+    .filter((market) => Number(market.fair_odds) <= 3.50)
+    .filter((market) => Number(market.probability) >= 45)
+    .filter((market) => ["A+", "A", "B"].includes(market.grade))
+    .slice(0, 8);
+}
+
+function supportLegMarkets(markets) {
+  return sortByKickoff(markets)
+    .filter((market) => Number(market.fair_odds) >= 1.15)
+    .filter((market) => Number(market.fair_odds) < 1.30)
+    .filter((market) => Number(market.probability) >= 70)
+    .filter((market) => ["A+", "A", "B"].includes(market.grade))
+    .slice(0, 10);
+}
+
+function builderComboCard(title, note, legs) {
+  const combinedOdds = comboOdds(legs);
+  const legHtml = legs.map((leg, index) => `
+    <div class="builder-leg">
+      <p><strong>Leg ${index + 1}:</strong> ${marketLegLabel(leg)}</p>
+      <p>${display(leg.home_team)} vs ${display(leg.away_team)} - ${localTime(leg.kickoff_time)}</p>
+      <p>Probability: <strong>${display(leg.probability)}%</strong> - Fair odds: <strong>${display(leg.fair_odds)}</strong> - Grade: <strong>${display(leg.grade)}</strong></p>
+      ${oddsWarning(leg.fair_odds)}
+      ${reliabilityWarning(leg.competition_status, leg.competition_status_message)}
+    </div>
+  `).join("");
+
+  return `
+    <article class="card detail-card">
+      <h3>${display(title)}</h3>
+      <p class="muted">${display(note)}</p>
+      <p>Estimated combined fair odds: <strong>${combinedOdds.toFixed(2)}</strong></p>
+      ${legHtml}
+    </article>
+  `;
+}
+
+function buildBetBuilderCombos(markets) {
+  const topValue = topValueMarkets(markets);
+  const supportLegs = supportLegMarkets(markets);
+  const combos = [];
+
+  if (topValue.length > 0) {
+    combos.push({
+      title: "Top Value Builder",
+      note: "Higher value legs. Still risky, test carefully.",
+      legs: topValue.slice(0, 4),
+    });
+  }
+
+  if (supportLegs.length > 0) {
+    combos.push({
+      title: "Support Legs Builder",
+      note: "Lower odds support legs. Better for small builder slips.",
+      legs: supportLegs.slice(0, 5),
+    });
+  }
+
+  if (topValue.length > 0 && supportLegs.length > 0) {
+    combos.push({
+      title: "Mixed Builder",
+      note: "Mixed value and support legs.",
+      legs: [...topValue.slice(0, 2), ...supportLegs.slice(0, 3)],
+    });
+  }
+
+  return combos;
+}
+
 async function loadBuilderFixtures() {
   setLoading("builder-fixtures", "Loading fixtures...");
   document.getElementById("builder-results").innerHTML = "";
