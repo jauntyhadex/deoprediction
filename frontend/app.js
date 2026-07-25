@@ -686,28 +686,37 @@ function accumulatorCombinedOdds(legs) {
   return legs.reduce((total, leg) => total * Number(leg.fair_odds || 1), 1);
 }
 
-function chooseAccumulatorLegs(markets, targetOdds) {
+function chooseAccumulatorLegs(markets, targetOdds, mode) {
   const target = Number(targetOdds);
   const usedFixtures = new Set();
+  const usedMarketKeys = new Set();
   const legs = [];
   let total = 1;
 
   const sorted = sortByKickoff(markets)
-    .filter((market) => Number(market.fair_odds) >= 1.20)
-    .filter((market) => Number(market.fair_odds) <= 6.00)
-    .filter((market) => Number(market.probability) >= 40)
-    .filter((market) => ["A+", "A", "B"].includes(market.grade));
+    .filter((market) => Number(market.fair_odds) >= 1.15)
+    .filter((market) => Number(market.fair_odds) <= 10.00)
+    .filter((market) => Number(market.probability) >= 25)
+    .filter((market) => ["A+", "A", "B", "C"].includes(market.grade))
+    .sort((a, b) => Number(b.fair_odds || 0) - Number(a.fair_odds || 0));
 
   for (const market of sorted) {
-    if (usedFixtures.has(market.fixture_id)) {
+    const marketKey = `${market.fixture_id}-${market.market_type}-${market.selection}-${market.line ?? ""}`;
+
+    if (usedMarketKeys.has(marketKey)) {
+      continue;
+    }
+
+    if (mode === "safer" && usedFixtures.has(market.fixture_id)) {
       continue;
     }
 
     legs.push(market);
     usedFixtures.add(market.fixture_id);
+    usedMarketKeys.add(marketKey);
     total *= Number(market.fair_odds || 1);
 
-    if (total >= target || legs.length >= 30) {
+    if (total >= target || legs.length >= 40) {
       break;
     }
   }
@@ -736,18 +745,19 @@ async function loadAccumulator() {
   setLoading("accumulator-results", "Building accumulator slip...");
 
   const targetOdds = document.getElementById("accumulator-target").value;
+  const mode = document.getElementById("accumulator-mode").value;
   const selectedDate = document.getElementById("accumulator-date").value;
 
   updateDateLabel("accumulator-date-label", selectedDate);
 
   const params = new URLSearchParams({
-    limit: "100",
+    limit: "200",
     upcoming_only: "true",
-    one_per_fixture: "true",
-    minimum_fair_odds: "1.20",
-    maximum_fair_odds: "6.00",
-    minimum_probability: "40",
-    minimum_market_confidence: "30",
+    one_per_fixture: mode === "safer" ? "true" : "false",
+    minimum_fair_odds: "1.15",
+    maximum_fair_odds: "10.00",
+    minimum_probability: "25",
+    minimum_market_confidence: "20",
   });
 
   const accumulatorDateRange = dateRangeParams(selectedDate);
@@ -760,7 +770,7 @@ async function loadAccumulator() {
   try {
     const data = await fetchJson(`${API}/prediction-picks/markets/top?${params.toString()}`);
     const markets = Array.isArray(data.markets) ? data.markets : [];
-    const legs = chooseAccumulatorLegs(markets, targetOdds);
+    const legs = chooseAccumulatorLegs(markets, targetOdds, mode);
     const combinedOdds = accumulatorCombinedOdds(legs);
     const reachedTarget = combinedOdds >= Number(targetOdds);
 
@@ -768,6 +778,7 @@ async function loadAccumulator() {
       <article class="card detail-card">
         <h3>Target ${display(targetOdds)} odds</h3>
         <p>Estimated combined fair odds: <strong>${combinedOdds.toFixed(2)}</strong></p>
+        <p>Mode: <strong>${mode === "safer" ? "Safer - one leg per game" : "Aggressive - multiple legs per game"}</strong></p>
         <p>Legs selected: <strong>${legs.length}</strong></p>
         <p class="${Number(targetOdds) >= 2000 ? "risk-warning" : "risk-caution"}">${display(accumulatorRiskText(targetOdds))}</p>
         <p class="muted">${reachedTarget ? "Target reached from current available markets." : "Target not reached from current available markets. This is the best available attempt with current filters."}</p>
