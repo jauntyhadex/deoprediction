@@ -954,6 +954,14 @@ function accumulatorQualityRules(quality) {
       grades: ["A+", "A", "B", "C", "D", "E"],
       label: "High-odds slip",
     },
+    more_legs: {
+      minimumOdds: 1.01,
+      maximumOdds: 3.00,
+      minimumProbability: 33,
+      minimumConfidence: 0,
+      grades: ["A+", "A", "B", "C", "D", "E"],
+      label: "More legs slip",
+    },
     extreme: {
       minimumOdds: 1.15,
       maximumOdds: 10.00,
@@ -967,6 +975,36 @@ function accumulatorQualityRules(quality) {
   return rules[quality] || rules.balanced;
 }
 
+
+
+function sortAccumulatorMarketsForQuality(markets, quality) {
+  if (quality === "more_legs") {
+    return markets.sort((a, b) => {
+      const oddsA = Number(a.fair_odds || 0);
+      const oddsB = Number(b.fair_odds || 0);
+      const probA = Number(a.probability || 0);
+      const probB = Number(b.probability || 0);
+
+      if (Math.abs(oddsA - oddsB) > 0.01) return oddsA - oddsB;
+      return probB - probA;
+    });
+  }
+
+  if (quality === "balanced") {
+    return markets.sort((a, b) => {
+      const probA = Number(a.probability || 0);
+      const probB = Number(b.probability || 0);
+      const oddsA = Number(a.fair_odds || 0);
+      const oddsB = Number(b.fair_odds || 0);
+
+      if (Math.abs(probA - probB) > 0.01) return probB - probA;
+      return oddsB - oddsA;
+    });
+  }
+
+  return markets.sort((a, b) => Number(b.fair_odds || 0) - Number(a.fair_odds || 0));
+}
+
 function chooseAccumulatorLegs(markets, targetOdds, mode, group, quality, maxLegs) {
   const target = Number(targetOdds);
   const limit = Number(maxLegs || 15);
@@ -976,13 +1014,15 @@ function chooseAccumulatorLegs(markets, targetOdds, mode, group, quality, maxLeg
   const legs = [];
   let total = 1;
 
-  const sorted = sortByKickoff(filterAccumulatorMarketsByGroup(markets, group))
-    .filter((market) => Number(market.fair_odds) >= rules.minimumOdds)
-    .filter((market) => Number(market.fair_odds) <= rules.maximumOdds)
-    .filter((market) => Number(market.probability) >= rules.minimumProbability)
-    .filter((market) => Number(market.market_confidence) >= rules.minimumConfidence)
-    .filter((market) => rules.grades.includes(market.grade))
-    .sort((a, b) => Number(b.fair_odds || 0) - Number(a.fair_odds || 0));
+  const sorted = sortAccumulatorMarketsForQuality(
+    sortByKickoff(filterAccumulatorMarketsByGroup(markets, group))
+      .filter((market) => Number(market.fair_odds) >= rules.minimumOdds)
+      .filter((market) => Number(market.fair_odds) <= rules.maximumOdds)
+      .filter((market) => Number(market.probability) >= rules.minimumProbability)
+      .filter((market) => Number(market.market_confidence) >= rules.minimumConfidence)
+      .filter((market) => rules.grades.includes(market.grade)),
+    quality
+  );
 
   for (const market of sorted) {
     const marketKey = `${market.fixture_id}-${market.market_type}-${market.selection}-${market.line ?? ""}`;
