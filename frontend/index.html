@@ -306,6 +306,23 @@
           <option value="aggressive">Aggressive: multiple legs per game</option>
         </select>
 
+        <select id="accumulator-market-group">
+          <option value="all">All current football markets</option>
+          <option value="goals">Goals markets</option>
+          <option value="results">Result markets</option>
+          <option value="btts">BTTS / GG markets</option>
+          <option value="team_goals">Team goal markets</option>
+          <option value="halves">First half / second half markets</option>
+          <option value="defense">Clean sheet / win to nil</option>
+          <option value="corners" disabled>Corners coming soon</option>
+          <option value="cards" disabled>Cards coming soon</option>
+          <option value="fouls_tackles" disabled>Fouls / tackles coming soon</option>
+          <option value="player_props" disabled>Player props coming soon</option>
+          <option value="basketball" disabled>Basketball accumulators coming soon</option>
+          <option value="tennis" disabled>Tennis accumulators coming soon</option>
+          <option value="table_tennis" disabled>Table tennis accumulators coming soon</option>
+        </select>
+
         <input id="accumulator-date" type="date" />
         <button onclick="setAccumulatorDate(0)">Today</button>
         <button onclick="setAccumulatorDate(1)">Tomorrow</button>

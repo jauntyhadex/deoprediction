@@ -206,6 +206,16 @@ Supported slip types:
 - High-risk accumulators
 - Extreme-risk long-shot accumulators
 
+
+More accumulator market options:
+- Corners: total corners, team corners, first-half corners, corner handicap, race to corners.
+- Cards: total cards, team cards, player cards, red card, booking points.
+- Fouls and tackles: team fouls, player fouls, player tackles, fouls drawn.
+- Player props: shots, shots on target, anytime scorer, assists, goalkeeper saves.
+- Basketball: moneyline, spread, totals, team totals, quarters, player points/rebounds/assists.
+- Tennis: match winner, set betting, total games, handicaps, tie-break, player service holds/breaks.
+- Table tennis: match winner, correct score, total points, handicaps, game winner.
+
 Rules:
 - Label 100 odds as high risk.
 - Label 2000 odds as very high risk.

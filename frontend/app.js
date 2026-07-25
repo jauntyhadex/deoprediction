@@ -698,14 +698,41 @@ function accumulatorCombinedOdds(legs) {
   return legs.reduce((total, leg) => total * Number(leg.fair_odds || 1), 1);
 }
 
-function chooseAccumulatorLegs(markets, targetOdds, mode) {
+function accumulatorMarketGroupTypes(group) {
+  const groups = {
+    goals: ["TOTAL_GOALS"],
+    results: ["MATCH_RESULT", "DOUBLE_CHANCE", "DRAW_NO_BET", "ASIAN_HANDICAP"],
+    btts: ["BTTS", "FIRST_HALF_BTTS"],
+    team_goals: ["HOME_TEAM_TOTAL", "AWAY_TEAM_TOTAL"],
+    halves: ["FIRST_HALF_RESULT", "SECOND_HALF_RESULT", "FIRST_HALF_TOTAL_GOALS", "SECOND_HALF_TOTAL_GOALS", "FIRST_HALF_BTTS"],
+    defense: ["CLEAN_SHEET", "WIN_TO_NIL"],
+  };
+
+  return groups[group] || [];
+}
+
+function filterAccumulatorMarketsByGroup(markets, group) {
+  if (!group || group === "all") {
+    return markets;
+  }
+
+  const allowedTypes = accumulatorMarketGroupTypes(group);
+
+  if (allowedTypes.length === 0) {
+    return [];
+  }
+
+  return markets.filter((market) => allowedTypes.includes(market.market_type));
+}
+
+function chooseAccumulatorLegs(markets, targetOdds, mode, group) {
   const target = Number(targetOdds);
   const usedFixtures = new Set();
   const usedMarketKeys = new Set();
   const legs = [];
   let total = 1;
 
-  const sorted = sortByKickoff(markets)
+  const sorted = sortByKickoff(filterAccumulatorMarketsByGroup(markets, group))
     .filter((market) => Number(market.fair_odds) >= 1.15)
     .filter((market) => Number(market.fair_odds) <= 10.00)
     .filter((market) => Number(market.probability) >= 25)
@@ -758,6 +785,7 @@ async function loadAccumulator() {
 
   const targetOdds = document.getElementById("accumulator-target").value;
   const mode = document.getElementById("accumulator-mode").value;
+  const marketGroup = document.getElementById("accumulator-market-group").value;
   const selectedDate = document.getElementById("accumulator-date").value;
 
   updateDateLabel("accumulator-date-label", selectedDate);
@@ -782,7 +810,7 @@ async function loadAccumulator() {
   try {
     const data = await fetchJson(`${API}/prediction-picks/markets/top?${params.toString()}`);
     const markets = Array.isArray(data.markets) ? data.markets : [];
-    const legs = chooseAccumulatorLegs(markets, targetOdds, mode);
+    const legs = chooseAccumulatorLegs(markets, targetOdds, mode, marketGroup);
     const combinedOdds = accumulatorCombinedOdds(legs);
     const reachedTarget = combinedOdds >= Number(targetOdds);
 
@@ -791,6 +819,7 @@ async function loadAccumulator() {
         <h3>Target ${display(targetOdds)} odds</h3>
         <p>Estimated combined fair odds: <strong>${combinedOdds.toFixed(2)}</strong></p>
         <p>Mode: <strong>${mode === "safer" ? "Safer - one leg per game" : "Aggressive - multiple legs per game"}</strong></p>
+        <p>Market group: <strong>${display(marketGroup.replaceAll("_", " "))}</strong></p>
         <p>Legs selected: <strong>${legs.length}</strong></p>
         <p class="${Number(targetOdds) >= 2000 ? "risk-warning" : "risk-caution"}">${display(accumulatorRiskText(targetOdds))}</p>
         <p class="muted">${reachedTarget ? "Target reached from current available markets." : "Target not reached from current available markets. This is the best available attempt with current filters."}</p>
