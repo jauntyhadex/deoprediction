@@ -877,6 +877,65 @@ function filterAccumulatorMarketsByGroup(markets, group) {
   return markets.filter((market) => allowedTypes.includes(market.market_type));
 }
 
+function accumulatorFetchMarketTypes(group) {
+  const groupTypes = accumulatorMarketGroupTypes(group);
+
+  if (groupTypes.length) {
+    return groupTypes;
+  }
+
+  return [
+    "MATCH_RESULT",
+    "DOUBLE_CHANCE",
+    "DRAW_NO_BET",
+    "BTTS",
+    "TOTAL_GOALS",
+    "HOME_TEAM_TOTAL",
+    "AWAY_TEAM_TOTAL",
+    "FIRST_HALF_RESULT",
+    "SECOND_HALF_RESULT",
+    "FIRST_HALF_TOTAL_GOALS",
+    "SECOND_HALF_TOTAL_GOALS",
+    "FIRST_HALF_BTTS",
+    "SECOND_HALF_BTTS",
+    "CLEAN_SHEET",
+    "WIN_TO_NIL",
+    "ASIAN_HANDICAP",
+  ];
+}
+
+function dedupeAccumulatorMarkets(markets) {
+  const seen = new Set();
+  const result = [];
+
+  markets.forEach((market) => {
+    const key = `${market.market_id}-${market.fixture_id}-${market.market_type}-${market.selection}-${market.line ?? ""}`;
+
+    if (!seen.has(key)) {
+      seen.add(key);
+      result.push(market);
+    }
+  });
+
+  return result;
+}
+
+async function fetchAccumulatorMarkets(params, group) {
+  const marketTypes = accumulatorFetchMarketTypes(group);
+
+  const requests = marketTypes.map((marketType) => {
+    const nextParams = new URLSearchParams(params);
+    nextParams.set("market_type", marketType);
+    return fetchJson(`${API}/prediction-picks/markets/top?${nextParams.toString()}`);
+  });
+
+  const responses = await Promise.all(requests);
+  return dedupeAccumulatorMarkets(
+    responses.flatMap((data) => Array.isArray(data.markets) ? data.markets : [])
+  );
+}
+
+
 function accumulatorQualityRules(quality) {
   const rules = {
     balanced: {
@@ -983,9 +1042,9 @@ async function loadAccumulator() {
     limit: "100",
     upcoming_only: "true",
     one_per_fixture: mode === "safer" ? "true" : "false",
-    minimum_fair_odds: "1.15",
+    minimum_fair_odds: "1.01",
     maximum_fair_odds: "10.00",
-    minimum_probability: "25",
+    minimum_probability: "1",
     minimum_market_confidence: "0",
   });
 
@@ -999,8 +1058,7 @@ async function loadAccumulator() {
   }
 
   try {
-    const data = await fetchJson(`${API}/prediction-picks/markets/top?${params.toString()}`);
-    const markets = Array.isArray(data.markets) ? data.markets : [];
+    const markets = await fetchAccumulatorMarkets(params, marketGroup);
     const legs = chooseAccumulatorLegs(markets, targetOdds, mode, marketGroup, quality, maxLegs);
     const combinedOdds = accumulatorCombinedOdds(legs);
     const competitionSelect = document.getElementById("accumulator-competition");
