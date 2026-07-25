@@ -195,3 +195,16 @@ button {
 .guide-highlight {
   border-color: rgba(91, 141, 239, 0.55);
 }
+
+.active-nav {
+  background: #ffffff;
+  color: #111827;
+  border-color: #ffffff;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.22);
+}
+
+.active-nav:hover {
+  background: #ffffff;
+  color: #111827;
+}
+

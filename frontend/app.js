@@ -1056,3 +1056,41 @@ async function loadCatalog() {
 }
 
 loadHome();
+
+function setActiveNavButton(pageId) {
+  const activePage = String(pageId || "");
+  const navItems = document.querySelectorAll("nav button, header button, .nav button, .nav-link");
+
+  navItems.forEach((item) => {
+    const onclick = item.getAttribute("onclick") || "";
+    const dataPage = item.dataset.page || "";
+    const href = item.getAttribute("href") || "";
+
+    const isActive =
+      dataPage === activePage ||
+      href === `#${activePage}` ||
+      onclick.includes(`'${activePage}'`) ||
+      onclick.includes(`"${activePage}"`);
+
+    item.classList.toggle("active-nav", isActive);
+  });
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  if (typeof window.showPage === "function" && !window.showPage.__activeNavWrapped) {
+    const originalShowPage = window.showPage;
+
+    window.showPage = function(pageId) {
+      originalShowPage(pageId);
+      setActiveNavButton(pageId);
+    };
+
+    window.showPage.__activeNavWrapped = true;
+  }
+
+  const firstVisiblePage = document.querySelector("section:not([hidden]), .page:not(.hidden), .screen:not(.hidden)");
+  if (firstVisiblePage?.id) {
+    setActiveNavButton(firstVisiblePage.id);
+  }
+});
+
