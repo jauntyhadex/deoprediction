@@ -268,6 +268,7 @@ function showPage(page) {
   document.getElementById("catalog-page").classList.toggle("hidden", page !== "catalog");
   document.getElementById("builder-page").classList.toggle("hidden", page !== "builder");
   document.getElementById("guide-page").classList.toggle("hidden", page !== "guide");
+  document.getElementById("launch-page").classList.toggle("hidden", page !== "launch");
   document.getElementById("accumulator-page").classList.toggle("hidden", page !== "accumulator");
 
   if (page === "fixtures") loadFixtures();
