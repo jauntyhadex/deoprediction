@@ -186,8 +186,14 @@ Build high-odds slips after core markets are reliable.
 
 Targets:
 - 100 odds
+- 200 odds
+- 300 odds
+- 500 odds
+- 1000 odds
 - 2000 odds
+- 5000 odds
 - 10000 odds
+- 20000 odds
 - Custom target odds later
 
 Supported slip types:

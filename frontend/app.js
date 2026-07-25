@@ -671,12 +671,24 @@ function clearAccumulatorDate() {
 function accumulatorRiskText(targetOdds) {
   const target = Number(targetOdds);
 
+  if (target >= 20000) {
+    return "Maximum extreme risk. This is a long-shot slip and is very unlikely to land.";
+  }
+
   if (target >= 10000) {
     return "Extreme risk. This kind of slip is very unlikely to land and should only be viewed as a long-shot idea.";
   }
 
+  if (target >= 5000) {
+    return "Extreme risk. Many legs must land together.";
+  }
+
   if (target >= 2000) {
     return "Very high risk. Many things must go right for this to land.";
+  }
+
+  if (target >= 500) {
+    return "High risk. This needs many correct legs.";
   }
 
   return "High risk. This is still an accumulator, not a safe pick.";
