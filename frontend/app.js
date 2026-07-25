@@ -772,6 +772,8 @@ async function loadBetBuilder(fixtureId) {
   setLoading("builder-results", "Building bet builder suggestions...");
 
   try {
+    const competitionSelect = document.getElementById("builder-competition");
+    const selectedCompetitionLabel = competitionSelect?.selectedOptions?.[0]?.textContent || "All competitions";
     const data = await fetchJson(`${API}/prediction-picks/fixture/${fixtureId}?market_limit=100`);
     const markets = data.markets ?? [];
     const first = markets[0] ?? (data.picks ?? [])[0] ?? {};
@@ -782,6 +784,7 @@ async function loadBetBuilder(fixtureId) {
 
       <article class="card detail-card">
         <h3>${display(first.home_team)} vs ${display(first.away_team)}</h3>
+        <p>Competition filter: <strong>${display(selectedCompetitionLabel)}</strong></p>
         <p class="muted">${display(first.competition_name)} - ${localTime(first.kickoff_time)}</p>
         <p>Fixture lean: <strong>${display(first.fixture_result, "Not available")}</strong></p>
         <p>Competition reliability: <strong>${display(first.competition_status, "Unknown")}</strong></p>
