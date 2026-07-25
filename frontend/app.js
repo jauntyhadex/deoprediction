@@ -744,7 +744,6 @@ async function loadBuilderFixtures() {
   const params = new URLSearchParams({
     limit: "50",
     upcoming_only: "true",
-    days_ahead: "120",
   });
 
   if (builderCompetitionId) params.set("competition_id", builderCompetitionId);
@@ -974,7 +973,6 @@ async function loadAccumulator() {
   const params = new URLSearchParams({
     limit: "100",
     upcoming_only: "true",
-    days_ahead: "120",
     one_per_fixture: mode === "safer" ? "true" : "false",
     minimum_fair_odds: "1.15",
     maximum_fair_odds: "10.00",
