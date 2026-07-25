@@ -1001,7 +1001,11 @@ async function loadAccumulator() {
         <p>Market group: <strong>${display(marketGroup.replaceAll("_", " "))}</strong></p>
         <p>Legs selected: <strong>${legs.length}</strong> / max ${display(maxLegs)}</p>
         <p class="${Number(targetOdds) >= 2000 ? "risk-warning" : "risk-caution"}">${display(accumulatorRiskText(targetOdds))}</p>
-        <p class="muted">${reachedTarget ? "Target reached from current available markets." : "Target not reached from current available markets. This is the best available attempt with current filters."}</p>
+        <p class="${reachedTarget ? "risk-good" : "risk-warning"}">
+          ${reachedTarget
+            ? "Target reached from current available markets."
+            : "Target not reached. Try Max 20/30 legs, Extreme slip, All competitions, or All market groups."}
+        </p>
         <p class="muted">Football only now. Mixed football, basketball, tennis, and table tennis slips will come after those sports are added.</p>
       </article>
 
