@@ -10,6 +10,7 @@ import urllib.request
 from datetime import UTC, datetime
 from pathlib import Path
 
+from app.database import model_loader
 from app.database.connection import SessionLocal
 from app.enums import Sport
 from app.models.competition import Competition
