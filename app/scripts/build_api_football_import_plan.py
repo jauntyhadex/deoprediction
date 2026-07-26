@@ -1,4 +1,4 @@
-
+# -*- coding: utf-8 -*-
 from __future__ import annotations
 
 import json
@@ -19,8 +19,8 @@ FIRST_BATCH_TARGETS = [
     ("Russia", 235, "Premier League"),
     ("Russia", 236, "First League"),
 
-    ("Peru", 281, "Primera División"),
-    ("Peru", 282, "Segunda División"),
+    ("Peru", 281, "Primera Division"),
+    ("Peru", 282, "Segunda Division"),
 
     ("Paraguay", 250, "Division Profesional - Apertura"),
     ("Paraguay", 252, "Division Profesional - Clausura"),
@@ -33,7 +33,7 @@ FIRST_BATCH_TARGETS = [
 
     ("Sweden", 113, "Allsvenskan"),
     ("Sweden", 114, "Superettan"),
-    ("Sweden", 564, "Ettan - Södra"),
+    ("Sweden", 564, "Ettan - Sodra"),
     ("Sweden", 563, "Ettan - Norra"),
 ]
 
@@ -44,7 +44,7 @@ def load_cache() -> dict:
             "Cache not found. Run: python -m app.scripts.audit_api_football_leagues"
         )
 
-    return json.loads(CACHE_PATH.read_text())
+    return json.loads(CACHE_PATH.read_text(encoding="utf-8"))
 
 
 def find_league(cache: dict, country: str, league_id: int) -> dict | None:
