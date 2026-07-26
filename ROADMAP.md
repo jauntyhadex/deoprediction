@@ -324,3 +324,48 @@ Implementation order:
 7. Make Accumulator the main public long-slip tool.
 8. Start basketball only after this football upgrade is protected.
 
+## Free league expansion priority
+
+Goal:
+- Add all currently running football leagues possible under free providers.
+- Include Norway, Australia, Russia, Peru, Paraguay, and more where free data is available.
+- Do not rely only on football-data.org because the current key does not expose many of these leagues.
+- Use API-Football free tier carefully and cache everything.
+
+Important:
+- World Cup and Euros should not be shown as active betting competitions when they have no upcoming fixtures.
+- Champions League should also show empty/inactive when no upcoming fixtures exist in our database.
+- Accumulators should prioritize leagues with upcoming fixtures and available prediction markets.
+
+Provider expansion order:
+1. Keep football-data.org for current supported leagues.
+2. Add API-Football free provider audit.
+3. Fetch available leagues by country:
+   Norway
+   Australia
+   Russia
+   Peru
+   Paraguay
+   Argentina
+   Chile
+   Colombia
+   Uruguay
+   Mexico
+   USA
+   Sweden
+   Denmark
+   Finland
+   Iceland
+   Turkey
+   Greece
+   Belgium
+   Scotland
+   Austria
+   Switzerland
+4. Save provider league IDs in database.
+5. Import fixtures and results with daily request limits.
+6. Generate normal markets first:
+   match result, double chance, draw no bet, totals, BTTS, team goals, halves.
+7. Add advanced markets when cached stats exist:
+   corners, cards, fouls, tackles, shots, scorers.
+
