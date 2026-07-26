@@ -24,34 +24,36 @@ COMPETITION_OFFSET = 900_000_000
 TEAM_OFFSET = 900_000_000
 FIXTURE_OFFSET = 9_000_000_000
 
+HISTORICAL_SEASONS = [2024, 2023, 2022]
+
 FIRST_BATCH_TARGETS = [
-    ("Norway", 103, 2026),
-    ("Norway", 104, 2026),
+    ("Norway", 103),
+    ("Norway", 104),
 
-    ("Australia", 192, 2026),
-    ("Australia", 195, 2026),
-    ("Australia", 482, 2026),
-    ("Australia", 188, 2026),
+    ("Australia", 192),
+    ("Australia", 195),
+    ("Australia", 482),
+    ("Australia", 188),
 
-    ("Russia", 235, 2026),
-    ("Russia", 236, 2026),
+    ("Russia", 235),
+    ("Russia", 236),
 
-    ("Peru", 281, 2026),
-    ("Peru", 282, 2026),
+    ("Peru", 281),
+    ("Peru", 282),
 
-    ("Paraguay", 250, 2026),
-    ("Paraguay", 252, 2026),
-    ("Paraguay", 251, 2026),
+    ("Paraguay", 250),
+    ("Paraguay", 252),
+    ("Paraguay", 251),
 
-    ("Scotland", 179, 2026),
-    ("Scotland", 180, 2026),
-    ("Scotland", 183, 2026),
-    ("Scotland", 184, 2026),
+    ("Scotland", 179),
+    ("Scotland", 180),
+    ("Scotland", 183),
+    ("Scotland", 184),
 
-    ("Sweden", 113, 2026),
-    ("Sweden", 114, 2026),
-    ("Sweden", 564, 2026),
-    ("Sweden", 563, 2026),
+    ("Sweden", 113),
+    ("Sweden", 114),
+    ("Sweden", 564),
+    ("Sweden", 563),
 ]
 
 
@@ -298,7 +300,7 @@ def import_league(db, country_name: str, league_id: int, season: int, data: dict
         }
 
     first = response[0]
-    league_data = first.get("league") or {"league": {"id": league_id}}
+    league_data = {"league": first.get("league") or {"id": league_id}}
     competition = upsert_competition(db, league_data, country_name, season)
 
     inserted = 0
@@ -351,52 +353,59 @@ def main() -> None:
 
     print("API-FOOTBALL UNDERGROUND LEAGUE IMPORT")
     print("Safe mode: cached league fixtures cost 0 requests.")
-    print(f"Safe mode: max fresh fixture requests this run = {fresh_limit}")
+    print(f"Safe mode: max fresh historical fixture requests this run = {fresh_limit}")
     print("Safe mode: waits 7 seconds between fresh requests.")
     print("")
 
     db = SessionLocal()
 
     try:
-        for country_name, league_id, season in FIRST_BATCH_TARGETS:
-            cache_key = f"{league_id}:{season}"
+        for country_name, league_id in FIRST_BATCH_TARGETS:
+            for season in HISTORICAL_SEASONS:
+                cache_key = f"{league_id}:{season}"
 
-            if cache_key in cache:
-                data = cache[cache_key]
-                source = "cached"
-            else:
-                if fresh_requests >= fresh_limit:
-                    print("")
-                    print(f"Stopped safely after {fresh_requests} fresh fixture requests.")
-                    print("Run again later/tomorrow to continue importing the next leagues.")
-                    break
+                if cache_key in cache:
+                    data = cache[cache_key]
+                    source = "cached"
+                else:
+                    if fresh_requests >= fresh_limit:
+                        print("")
+                        print(f"Stopped safely after {fresh_requests} fresh fixture requests.")
+                        print("Run again later/tomorrow to continue importing the next leagues.")
+                        return
 
-                try:
-                    data = api_get(
-                        "/fixtures",
-                        {"league": str(league_id), "season": str(season)},
-                        api_key,
-                    )
-                except urllib.error.HTTPError as error:
-                    print("")
-                    print(f"Stopped because provider returned HTTP {error.code}: {error.reason}")
-                    print("Do not keep retrying now. Wait for quota/rate-limit reset.")
+                    try:
+                        data = api_get(
+                            "/fixtures",
+                            {"league": str(league_id), "season": str(season)},
+                            api_key,
+                        )
+                    except urllib.error.HTTPError as error:
+                        print("")
+                        print(f"Stopped because provider returned HTTP {error.code}: {error.reason}")
+                        print("Do not keep retrying now. Wait for quota/rate-limit reset.")
+                        write_cache(cache)
+                        return
+
+                    cache[cache_key] = data
                     write_cache(cache)
-                    return
+                    fresh_requests += 1
+                    source = "fresh"
+                    time.sleep(7)
 
-                cache[cache_key] = data
-                write_cache(cache)
-                fresh_requests += 1
-                source = "fresh"
-                time.sleep(7)
+                errors = data.get("errors") or {}
 
-            result = import_league(db, country_name, league_id, season, data)
+                if errors:
+                    print(f"{country_name} | {league_id} | {season} | {source} | skipped | errors={errors}")
+                    continue
 
-            print(
-                f"{country_name} | {league_id} | {result['competition']} | {source} | "
-                f"fixtures={result['fixtures']} | inserted={result['inserted']} | "
-                f"updated={result['updated']} | teams={result['teams']}"
-            )
+                result = import_league(db, country_name, league_id, season, data)
+
+                print(
+                    f"{country_name} | {league_id} | {season} | {result['competition']} | {source} | "
+                    f"fixtures={result['fixtures']} | inserted={result['inserted']} | "
+                    f"updated={result['updated']} | teams={result['teams']}"
+                )
 
     finally:
         db.close()
