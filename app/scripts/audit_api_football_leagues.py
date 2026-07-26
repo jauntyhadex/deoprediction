@@ -12,8 +12,9 @@ from pathlib import Path
 
 BASE_URL = "https://v3.football.api-sports.io"
 CACHE_PATH = Path("data/api_football_league_audit_cache.json")
+COUNTRIES_CACHE_PATH = Path("data/api_football_country_cache.json")
 
-TARGET_COUNTRIES = [
+PRIORITY_COUNTRIES = [
     "Norway",
     "Australia",
     "Russia",
@@ -88,6 +89,51 @@ def write_cache(cache: dict) -> None:
     CACHE_PATH.write_text(json.dumps(cache, indent=2, sort_keys=True))
 
 
+def unique_country_list(countries: list[str]) -> list[str]:
+    seen = set()
+    output = []
+
+    for country in countries:
+        name = str(country or "").strip()
+
+        if not name:
+            continue
+
+        key = name.lower()
+
+        if key in seen:
+            continue
+
+        seen.add(key)
+        output.append(name)
+
+    return output
+
+
+def read_discovered_countries_cache() -> list[str]:
+    if not COUNTRIES_CACHE_PATH.exists():
+        return []
+
+    try:
+        data = json.loads(COUNTRIES_CACHE_PATH.read_text())
+    except json.JSONDecodeError:
+        return []
+
+    countries = data.get("countries", [])
+
+    if not isinstance(countries, list):
+        return []
+
+    return [str(country) for country in countries]
+
+
+def write_discovered_countries_cache(countries: list[str]) -> None:
+    COUNTRIES_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    COUNTRIES_CACHE_PATH.write_text(
+        json.dumps({"countries": countries}, indent=2, sort_keys=True)
+    )
+
+
 def api_get(path: str, params: dict[str, str], api_key: str) -> dict:
     query = urllib.parse.urlencode(params)
     url = f"{BASE_URL}{path}?{query}"
@@ -133,16 +179,43 @@ def main() -> None:
         return
 
     daily_limit = int(env.get("API_FOOTBALL_AUDIT_LIMIT", os.getenv("API_FOOTBALL_AUDIT_LIMIT", "8")))
+    auto_discover = env.get("API_FOOTBALL_AUTO_DISCOVER_COUNTRIES", "true").lower() != "false"
     cache = read_cache()
     requests_used = 0
 
     print("FREE API-FOOTBALL CURRENT LEAGUE AUDIT")
     print("Safe mode: cached countries cost 0 requests.")
-    print(f"Safe mode: max fresh country requests this run = {daily_limit}")
+    print(f"Safe mode: max fresh API requests this run = {daily_limit}")
     print("Safe mode: waits 7 seconds between fresh requests.")
     print("")
 
-    for country in TARGET_COUNTRIES:
+    discovered_countries = []
+
+    if auto_discover:
+        discovered_countries = read_discovered_countries_cache()
+
+        if discovered_countries:
+            print(f"Country discovery cache loaded: {len(discovered_countries)} countries")
+        elif requests_used < daily_limit:
+            try:
+                countries_data = api_get("/countries", {}, api_key)
+            except urllib.error.HTTPError as error:
+                print(f"Country discovery skipped: HTTP {error.code}: {error.reason}")
+            else:
+                discovered_countries = [
+                    item.get("name")
+                    for item in countries_data.get("response", [])
+                    if item.get("name")
+                ]
+                discovered_countries = sorted(unique_country_list(discovered_countries))
+                write_discovered_countries_cache(discovered_countries)
+                requests_used += 1
+                print(f"Country discovery saved: {len(discovered_countries)} countries")
+                time.sleep(7)
+
+    target_countries = unique_country_list(PRIORITY_COUNTRIES + discovered_countries)
+
+    for country in target_countries:
         if country in cache:
             print_country(country, cache[country], cached=True)
             continue
