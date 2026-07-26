@@ -281,7 +281,18 @@ function selectionNames(selections) {
 }
 
 
-async function loadCompetitionSelect(selectId, allLabel = "All competitions") {
+async function competitionHasUpcomingFixtures(competitionId) {
+  const params = new URLSearchParams({
+    limit: "1",
+    upcoming_only: "true",
+    competition_id: String(competitionId),
+  });
+
+  const data = await fetchJson(`${API}/fixtures?${params.toString()}`);
+  return Array.isArray(data.fixtures) && data.fixtures.length > 0;
+}
+
+async function loadCompetitionSelect(selectId, allLabel = "All competitions", activeOnly = false) {
   const select = document.getElementById(selectId);
 
   if (!select || select.dataset.loaded === "true") {
@@ -292,7 +303,20 @@ async function loadCompetitionSelect(selectId, allLabel = "All competitions") {
 
   try {
     const data = await fetchJson(`${API}/competitions?limit=100`);
-    const competitions = Array.isArray(data.competitions) ? data.competitions : [];
+    let competitions = Array.isArray(data.competitions) ? data.competitions : [];
+
+    if (activeOnly) {
+      const activeChecks = await Promise.all(
+        competitions.map(async (competition) => ({
+          competition,
+          isActive: await competitionHasUpcomingFixtures(competition.id),
+        }))
+      );
+
+      competitions = activeChecks
+        .filter((item) => item.isActive)
+        .map((item) => item.competition);
+    }
 
     select.innerHTML = `<option value="">${display(allLabel)}</option>` + competitions
       .map((competition) => {
@@ -328,11 +352,11 @@ function showPage(page) {
   if (page === "teams") loadTeams();
   if (page === "catalog") loadCatalog();
   if (page === "accumulator") {
-    loadCompetitionSelect("accumulator-competition").finally(loadAccumulator);
+    loadCompetitionSelect("accumulator-competition", "All active competitions", true).finally(loadAccumulator);
   }
 
   if (page === "builder") {
-    loadCompetitionSelect("builder-competition").finally(loadBuilderFixtures);
+    loadCompetitionSelect("builder-competition", "All active competitions", true).finally(loadBuilderFixtures);
   }
 }
 
