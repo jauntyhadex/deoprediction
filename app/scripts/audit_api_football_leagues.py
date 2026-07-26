@@ -2,13 +2,16 @@
 from __future__ import annotations
 
 import json
+import os
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
 
 
 BASE_URL = "https://v3.football.api-sports.io"
+CACHE_PATH = Path("data/api_football_league_audit_cache.json")
 
 TARGET_COUNTRIES = [
     "Norway",
@@ -70,6 +73,21 @@ def read_env() -> dict[str, str]:
     return env
 
 
+def read_cache() -> dict:
+    if not CACHE_PATH.exists():
+        return {}
+
+    try:
+        return json.loads(CACHE_PATH.read_text())
+    except json.JSONDecodeError:
+        return {}
+
+
+def write_cache(cache: dict) -> None:
+    CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    CACHE_PATH.write_text(json.dumps(cache, indent=2, sort_keys=True))
+
+
 def api_get(path: str, params: dict[str, str], api_key: str) -> dict:
     query = urllib.parse.urlencode(params)
     url = f"{BASE_URL}{path}?{query}"
@@ -83,6 +101,27 @@ def api_get(path: str, params: dict[str, str], api_key: str) -> dict:
         return json.loads(response.read().decode("utf-8"))
 
 
+def print_country(country: str, data: dict, cached: bool) -> None:
+    leagues = data.get("response", [])
+    cache_label = "cached" if cached else "fresh"
+
+    print(f"\n{country.upper()} | current leagues found: {len(leagues)} | {cache_label}")
+
+    for item in leagues:
+        league = item.get("league") or {}
+        seasons = item.get("seasons") or []
+        current_seasons = [season for season in seasons if season.get("current")]
+        season = current_seasons[0] if current_seasons else (seasons[-1] if seasons else {})
+
+        print(
+            f"  {league.get('id')} | "
+            f"{league.get('name')} | "
+            f"{league.get('type')} | "
+            f"{season.get('year')} | "
+            f"{season.get('start')} to {season.get('end')}"
+        )
+
+
 def main() -> None:
     env = read_env()
     api_key = env.get("API_FOOTBALL_API_KEY") or env.get("APISPORTS_API_KEY")
@@ -93,41 +132,50 @@ def main() -> None:
         print("No paid provider needed.")
         return
 
-    print("FREE API-FOOTBALL CURRENT LEAGUE AUDIT")
-    print("Request budget: this uses about 1 request per country.")
-    print("")
+    daily_limit = int(env.get("API_FOOTBALL_AUDIT_LIMIT", os.getenv("API_FOOTBALL_AUDIT_LIMIT", "8")))
+    cache = read_cache()
+    requests_used = 0
 
-    total_requests = 0
+    print("FREE API-FOOTBALL CURRENT LEAGUE AUDIT")
+    print("Safe mode: cached countries cost 0 requests.")
+    print(f"Safe mode: max fresh country requests this run = {daily_limit}")
+    print("Safe mode: waits 7 seconds between fresh requests.")
+    print("")
 
     for country in TARGET_COUNTRIES:
-        data = api_get(
-            "/leagues",
-            {"country": country, "current": "true"},
-            api_key,
-        )
-        total_requests += 1
+        if country in cache:
+            print_country(country, cache[country], cached=True)
+            continue
 
-        leagues = data.get("response", [])
-        print(f"\n{country.upper()} | current leagues found: {len(leagues)}")
+        if requests_used >= daily_limit:
+            print("")
+            print(f"Stopped safely after {requests_used} fresh requests.")
+            print("Run again tomorrow or increase API_FOOTBALL_AUDIT_LIMIT carefully.")
+            break
 
-        for item in leagues:
-            league = item.get("league") or {}
-            seasons = item.get("seasons") or []
-            current_seasons = [season for season in seasons if season.get("current")]
-            season = current_seasons[0] if current_seasons else (seasons[-1] if seasons else {})
-
-            print(
-                f"  {league.get('id')} | "
-                f"{league.get('name')} | "
-                f"{league.get('type')} | "
-                f"{season.get('year')} | "
-                f"{season.get('start')} to {season.get('end')}"
+        try:
+            data = api_get(
+                "/leagues",
+                {"country": country, "current": "true"},
+                api_key,
             )
+        except urllib.error.HTTPError as error:
+            print("")
+            print(f"Stopped because provider returned HTTP {error.code}: {error.reason}")
+            print("Do not keep retrying now. Wait for quota/rate-limit reset.")
+            write_cache(cache)
+            return
 
-        time.sleep(1)
+        cache[country] = data
+        write_cache(cache)
+        requests_used += 1
+
+        print_country(country, data, cached=False)
+        time.sleep(7)
 
     print("")
-    print(f"Done. Approx requests used: {total_requests}")
+    print(f"Done. Fresh requests used this run: {requests_used}")
+    print(f"Cache saved to: {CACHE_PATH}")
 
 
 if __name__ == "__main__":
