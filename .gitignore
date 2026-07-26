@@ -51,3 +51,6 @@ temp/
 Thumbs.db
 desktop.ini
 logs/
+
+# Local API-Football cache files
+data/api_football_*_cache.json
