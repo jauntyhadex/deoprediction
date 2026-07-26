@@ -306,16 +306,12 @@ async function loadCompetitionSelect(selectId, allLabel = "All competitions", ac
     let competitions = Array.isArray(data.competitions) ? data.competitions : [];
 
     if (activeOnly) {
-      const activeChecks = await Promise.all(
-        competitions.map(async (competition) => ({
-          competition,
-          isActive: await competitionHasUpcomingFixtures(competition.id),
-        }))
-      );
+      const inactiveCodes = new Set(["CL", "WC", "EC"]);
 
-      competitions = activeChecks
-        .filter((item) => item.isActive)
-        .map((item) => item.competition);
+      competitions = competitions.filter((competition) => {
+        const code = String(competition.code || "").toUpperCase();
+        return !inactiveCodes.has(code);
+      });
     }
 
     select.innerHTML = `<option value="">${display(allLabel)}</option>` + competitions
