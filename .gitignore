@@ -54,3 +54,4 @@ logs/
 
 # Local API-Football cache files
 data/api_football_*_cache.json
+data/thesportsdb_*_cache.json
