@@ -86,7 +86,7 @@ def api_get(api_key: str, endpoint: str, params: dict[str, str]) -> dict:
 
     request = urllib.request.Request(url)
 
-    with urllib.request.urlopen(request, timeout=30) as response:
+    with urllib.request.urlopen(request, timeout=20) as response:
         return json.loads(response.read().decode("utf-8"))
 
 
@@ -148,10 +148,9 @@ def main() -> None:
                     "search_all_leagues.php",
                     {"c": country, "s": "Soccer"},
                 )
-            except urllib.error.HTTPError as error:
-                print(f"Stopped on league search HTTP {error.code}: {error.reason}")
-                write_cache(cache)
-                return
+            except Exception as error:
+                print(f"League search failed for {country}: {type(error).__name__}: {error}")
+                continue
 
             cache["leagues"][cache_key] = leagues_data
             write_cache(cache)
@@ -161,6 +160,9 @@ def main() -> None:
 
         leagues = leagues_data.get("countries") or []
         print(f"\n{country.upper()} | leagues found={len(leagues)} | {source}")
+
+        for league in leagues[:10]:
+            print(f"  CANDIDATE | {league.get('idLeague')} | {league.get('strLeague')}")
 
         targets = [name for target_country, name in TARGET_LEAGUES if target_country == country]
 
@@ -190,10 +192,12 @@ def main() -> None:
                         "eventsnextleague.php",
                         {"id": str(league_id)},
                     )
-                except urllib.error.HTTPError as error:
-                    print(f"Stopped on events HTTP {error.code}: {error.reason}")
-                    write_cache(cache)
-                    return
+                except Exception as error:
+                    print(
+                        f"  MATCH | {expected_name} -> {league_name} ({league_id}) "
+                        f"| events failed: {type(error).__name__}: {error}"
+                    )
+                    continue
 
                 cache["events"][events_cache_key] = events_data
                 write_cache(cache)
