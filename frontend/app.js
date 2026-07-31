@@ -211,7 +211,7 @@ function marketCard(market) {
     <article class="card">
       <div class="row">
         <h3>${display(market.home_team)} vs ${display(market.away_team)}</h3>
-        <span class="badge">${display(market.grade)}</span>
+        <span class="badge">${display(isExperimentalMarket(market) ? "RESEARCH" : market.grade)}</span>
       </div>
       <p class="muted">${display(market.competition_name)} - ${localTime(market.kickoff_time)}</p>
       <p><strong>${display(market.market_type)}</strong>: ${display(market.selection)} ${lineValue(market.line)}</p>
@@ -219,7 +219,8 @@ function marketCard(market) {
       <p>Fair odds: <strong>${display(market.fair_odds)}</strong> - Score: <strong>${display(market.score)}</strong></p>
       ${oddsWarning(market.fair_odds)}
       <p>Fixture lean: <strong>${display(market.fixture_result)}</strong> - Gate: <strong>${display(market.quality_gate)}</strong></p>
-      <p class="muted">Competition status: ${display(market.competition_status)}</p>
+      <p class="muted">Status: ${display(isExperimentalMarket(market) ? "RESEARCH ONLY - NOT AN OFFICIAL PICK" : market.competition_status)}</p>
+      ${isExperimentalMarket(market) ? '<p class="risk-warning">Research only. Do not treat this as an official betting pick.</p>' : ''}
       ${reliabilityWarning(market.competition_status, market.competition_status_message)}
     </article>
   `;
@@ -419,7 +420,7 @@ function ensureMarketSearchInput() {
 
   const label = document.createElement("label");
   label.className = "inline-check";
-  label.innerHTML = `<input id="market-experimental" type="checkbox"> Include experimental underground markets`;
+  label.innerHTML = `<input id="market-experimental" type="checkbox"> Research mode: show non-official underground markets`;
 
   label.addEventListener("change", loadMarkets);
 
@@ -483,6 +484,7 @@ function fixtureMarketCard(market) {
       <p>Probability: <strong>${display(market.probability)}%</strong></p>
       <p>Fair odds: <strong>${display(market.fair_odds)}</strong></p>
       ${oddsWarning(market.fair_odds)}
+      ${isExperimentalMarket(market) ? '<p class="risk-warning">Research only. Not an official pick.</p>' : ''}
       <p>Score: <strong>${display(market.score)}</strong></p>
       <p class="muted">Gate: ${display(market.quality_gate)}</p>
       ${reliabilityWarning(market.competition_status, market.competition_status_message)}
@@ -523,7 +525,7 @@ async function loadFixtureDetail(fixtureId) {
         ${picks.length > 0 ? picks.map(pickCard).join("") : messageCard("No official picks passed the strict quality gate for this fixture yet. Check Market Probabilities below for experimental prices.")}
       </div>
 
-      <h3>Experimental Market Probabilities</h3>
+      <h3>Research Market Probabilities - Not Official Picks</h3>
       <div>
         ${markets.length > 0 ? markets.map(fixtureMarketCard).join("") : messageCard("No market probabilities found for this fixture.")}
       </div>
@@ -632,7 +634,7 @@ async function loadMarkets() {
       "markets",
       markets,
       experimental
-        ? "No experimental underground markets found for this search."
+        ? "No research markets found for this search."
         : "No markets found for this date and filter.",
       marketCard
     );
@@ -780,6 +782,7 @@ function builderComboCard(title, note, legs) {
       <p>${display(leg.home_team)} vs ${display(leg.away_team)} - ${localTime(leg.kickoff_time)}</p>
       <p>Probability: <strong>${display(leg.probability)}%</strong> - Fair odds: <strong>${display(leg.fair_odds)}</strong> - Grade: <strong>${display(leg.grade)}</strong></p>
       ${oddsWarning(leg.fair_odds)}
+      ${isExperimentalMarket(leg) ? '<p class="risk-warning">Research only. Not an official pick.</p>' : ''}
       ${reliabilityWarning(leg.competition_status, leg.competition_status_message)}
     </div>
   `).join("");
@@ -826,8 +829,8 @@ function buildBetBuilderCombos(markets) {
 
   if (combos.length === 0 && experimental.length > 0) {
     combos.push({
-      title: "Experimental underground markets",
-      note: "Testing only. These markets did not pass official pick quality gates.",
+      title: "Research markets - not official picks",
+      note: "Research only. These markets did not pass official pick quality gates.",
       legs: experimental
         .filter((market) => Number(market.fair_odds) >= 1.01)
         .sort((a, b) => Number(b.probability || 0) - Number(a.probability || 0))
@@ -902,7 +905,7 @@ async function loadBetBuilder(fixtureId) {
         ${reliabilityWarning(first.competition_status, first.competition_status_message)}
         <p>Markets checked: <strong>${display(markets.length)}</strong></p>
         <p class="odds-caution">Testing mode: builder suggestions are filtered, but not guaranteed profit.</p>
-        ${isExperimentalMarket(first) ? '<p class="risk-warning">Experimental underground mode: use for research only, not as official picks.</p>' : ''}
+        ${isExperimentalMarket(first) ? '<p class="risk-warning">Research mode: these are not official picks. Use only for analysis.</p>' : ''}
       </article>
 
       ${combos.length > 0 ? combos.map((combo) => builderComboCard(combo.title, combo.note, combo.legs)).join("") : messageCard("No builder suggestions found for this fixture.")}
@@ -1158,13 +1161,14 @@ function accumulatorLegCard(leg, index) {
     <article class="card">
       <div class="row">
         <h3>Leg ${index + 1}: ${display(leg.home_team)} vs ${display(leg.away_team)}</h3>
-        <span class="badge">${display(leg.grade)}</span>
+        <span class="badge">${display(isExperimentalMarket(leg) ? "RESEARCH" : leg.grade)}</span>
       </div>
       <p class="muted">${display(leg.competition_name)} - ${localTime(leg.kickoff_time)}</p>
       <p><strong>${display(leg.market_type)}</strong>: ${display(leg.selection)} ${lineValue(leg.line)}</p>
       <p>Probability: <strong>${display(leg.probability)}%</strong> - Fair odds: <strong>${display(leg.fair_odds)}</strong></p>
       <p>Score: <strong>${display(leg.score)}</strong> - Gate: <strong>${display(leg.quality_gate)}</strong></p>
       ${oddsWarning(leg.fair_odds)}
+      ${isExperimentalMarket(leg) ? '<p class="risk-warning">Research only. Not an official pick.</p>' : ''}
       ${reliabilityWarning(leg.competition_status, leg.competition_status_message)}
     </article>
   `;
