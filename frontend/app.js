@@ -220,7 +220,7 @@ function marketCard(market) {
       ${oddsWarning(market.fair_odds)}
       <p>Fixture lean: <strong>${display(market.fixture_result)}</strong> - Gate: <strong>${display(market.quality_gate)}</strong></p>
       <p class="muted">Status: ${display(isExperimentalMarket(market) ? "RESEARCH ONLY - NOT AN OFFICIAL PICK" : market.competition_status)}</p>
-      ${isExperimentalMarket(market) ? '<p class="risk-warning">Research only. Do not treat this as an official betting pick.</p>' : ''}
+      ${isExperimentalMarket(market) ? '<p class="risk-warning">Not an official pick.</p>' : ''}
       ${reliabilityWarning(market.competition_status, market.competition_status_message)}
     </article>
   `;
@@ -418,14 +418,7 @@ function ensureMarketSearchInput() {
     window.marketSearchTimer = setTimeout(loadMarkets, 300);
   });
 
-  const label = document.createElement("label");
-  label.className = "inline-check";
-  label.innerHTML = `<input id="market-experimental" type="checkbox"> Research mode: show non-official underground markets`;
-
-  label.addEventListener("change", loadMarkets);
-
   marketFilter.parentElement.insertBefore(input, marketFilter);
-  marketFilter.parentElement.insertBefore(label, marketFilter);
 }
 
 async function loadFixtures() {
@@ -589,7 +582,7 @@ async function loadMarkets() {
   const line = document.getElementById("market-line").value.trim();
   const selectedDate = document.getElementById("market-date").value;
   const search = document.getElementById("market-search")?.value.trim() || "";
-  const experimental = document.getElementById("market-experimental")?.checked || false;
+  const experimental = false;
   updateDateLabel("market-date-label", selectedDate);
 
   const params = new URLSearchParams({
@@ -618,24 +611,13 @@ async function loadMarkets() {
   }
 
   try {
-    if (experimental) {
-      params.set("limit", "500");
-      if (search) params.set("search", search);
-    }
-
-    const endpoint = experimental
-      ? "prediction-picks/markets/experimental"
-      : "prediction-picks/markets/top";
-
-    const data = await fetchJson(`${API}/${endpoint}?${params.toString()}`);
+    const data = await fetchJson(`${API}/prediction-picks/markets/top?${params.toString()}`);
     const markets = clientSideSearchItems(sortByKickoff(data.markets || []), search);
 
     renderCards(
       "markets",
       markets,
-      experimental
-        ? "No research markets found for this search."
-        : "No markets found for this date and filter.",
+      "No official markets found for this date and filter.",
       marketCard
     );
   } catch (error) {
@@ -801,7 +783,6 @@ function buildBetBuilderCombos(markets) {
   const topValue = topValueMarkets(markets);
   const supportLegs = supportLegMarkets(markets);
   const combos = [];
-  const experimental = markets.filter(isExperimentalMarket);
 
   if (topValue.length > 0) {
     combos.push({
@@ -824,17 +805,6 @@ function buildBetBuilderCombos(markets) {
       title: "Mixed Builder",
       note: "Mixed value and support legs.",
       legs: [...topValue.slice(0, 2), ...supportLegs.slice(0, 3)],
-    });
-  }
-
-  if (combos.length === 0 && experimental.length > 0) {
-    combos.push({
-      title: "Research markets - not official picks",
-      note: "Research only. These markets did not pass official pick quality gates.",
-      legs: experimental
-        .filter((market) => Number(market.fair_odds) >= 1.01)
-        .sort((a, b) => Number(b.probability || 0) - Number(a.probability || 0))
-        .slice(0, 8),
     });
   }
 
@@ -905,7 +875,7 @@ async function loadBetBuilder(fixtureId) {
         ${reliabilityWarning(first.competition_status, first.competition_status_message)}
         <p>Markets checked: <strong>${display(markets.length)}</strong></p>
         <p class="odds-caution">Testing mode: builder suggestions are filtered, but not guaranteed profit.</p>
-        ${isExperimentalMarket(first) ? '<p class="risk-warning">Research mode: these are not official picks. Use only for analysis.</p>' : ''}
+        
       </article>
 
       ${combos.length > 0 ? combos.map((combo) => builderComboCard(combo.title, combo.note, combo.legs)).join("") : messageCard("No builder suggestions found for this fixture.")}
