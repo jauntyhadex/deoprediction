@@ -204,6 +204,7 @@ def get_or_create_competition(db, target: dict) -> Competition:
         name=target["league_name"],
         country=target["country"],
         type="League",
+        season=2026,
         sport=Sport.FOOTBALL,
     )
 
