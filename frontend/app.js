@@ -417,7 +417,14 @@ function ensureMarketSearchInput() {
     window.marketSearchTimer = setTimeout(loadMarkets, 300);
   });
 
+  const label = document.createElement("label");
+  label.className = "inline-check";
+  label.innerHTML = `<input id="market-experimental" type="checkbox"> Include experimental underground markets`;
+
+  label.addEventListener("change", loadMarkets);
+
   marketFilter.parentElement.insertBefore(input, marketFilter);
+  marketFilter.parentElement.insertBefore(label, marketFilter);
 }
 
 async function loadFixtures() {
@@ -580,6 +587,7 @@ async function loadMarkets() {
   const line = document.getElementById("market-line").value.trim();
   const selectedDate = document.getElementById("market-date").value;
   const search = document.getElementById("market-search")?.value.trim() || "";
+  const experimental = document.getElementById("market-experimental")?.checked || false;
   updateDateLabel("market-date-label", selectedDate);
 
   const params = new URLSearchParams({
@@ -608,10 +616,26 @@ async function loadMarkets() {
   }
 
   try {
-    const data = await fetchJson(`${API}/prediction-picks/markets/top?${params.toString()}`);
+    if (experimental) {
+      params.set("limit", "500");
+      if (search) params.set("search", search);
+    }
+
+    const endpoint = experimental
+      ? "prediction-picks/markets/experimental"
+      : "prediction-picks/markets/top";
+
+    const data = await fetchJson(`${API}/${endpoint}?${params.toString()}`);
     const markets = clientSideSearchItems(sortByKickoff(data.markets || []), search);
 
-    renderCards("markets", markets, "No markets found for this date and filter.", marketCard);
+    renderCards(
+      "markets",
+      markets,
+      experimental
+        ? "No experimental underground markets found for this search."
+        : "No markets found for this date and filter.",
+      marketCard
+    );
   } catch (error) {
     setError("markets", error.message);
   }
