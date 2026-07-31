@@ -744,6 +744,12 @@ function marketLegLabel(market) {
   return `${display(market.market_type)}: ${display(market.selection)} ${lineValue(market.line)}`;
 }
 
+function isExperimentalMarket(market) {
+  return market.grade === "EXP"
+    || market.quality_gate === "EXPERIMENTAL"
+    || market.competition_status === "EXPERIMENTAL";
+}
+
 function comboOdds(legs) {
   return legs.reduce((total, leg) => total * Number(leg.fair_odds || 1), 1);
 }
@@ -753,7 +759,7 @@ function topValueMarkets(markets) {
     .filter((market) => Number(market.fair_odds) >= 1.30)
     .filter((market) => Number(market.fair_odds) <= 3.50)
     .filter((market) => Number(market.probability) >= 45)
-    .filter((market) => ["A+", "A", "B"].includes(market.grade))
+    .filter((market) => ["A+", "A", "B"].includes(market.grade) || isExperimentalMarket(market))
     .slice(0, 8);
 }
 
@@ -762,7 +768,7 @@ function supportLegMarkets(markets) {
     .filter((market) => Number(market.fair_odds) >= 1.15)
     .filter((market) => Number(market.fair_odds) < 1.30)
     .filter((market) => Number(market.probability) >= 70)
-    .filter((market) => ["A+", "A", "B"].includes(market.grade))
+    .filter((market) => ["A+", "A", "B"].includes(market.grade) || isExperimentalMarket(market))
     .slice(0, 10);
 }
 
@@ -792,6 +798,7 @@ function buildBetBuilderCombos(markets) {
   const topValue = topValueMarkets(markets);
   const supportLegs = supportLegMarkets(markets);
   const combos = [];
+  const experimental = markets.filter(isExperimentalMarket);
 
   if (topValue.length > 0) {
     combos.push({
@@ -814,6 +821,17 @@ function buildBetBuilderCombos(markets) {
       title: "Mixed Builder",
       note: "Mixed value and support legs.",
       legs: [...topValue.slice(0, 2), ...supportLegs.slice(0, 3)],
+    });
+  }
+
+  if (combos.length === 0 && experimental.length > 0) {
+    combos.push({
+      title: "Experimental underground markets",
+      note: "Testing only. These markets did not pass official pick quality gates.",
+      legs: experimental
+        .filter((market) => Number(market.fair_odds) >= 1.01)
+        .sort((a, b) => Number(b.probability || 0) - Number(a.probability || 0))
+        .slice(0, 8),
     });
   }
 
@@ -884,6 +902,7 @@ async function loadBetBuilder(fixtureId) {
         ${reliabilityWarning(first.competition_status, first.competition_status_message)}
         <p>Markets checked: <strong>${display(markets.length)}</strong></p>
         <p class="odds-caution">Testing mode: builder suggestions are filtered, but not guaranteed profit.</p>
+        ${isExperimentalMarket(first) ? '<p class="risk-warning">Experimental underground mode: use for research only, not as official picks.</p>' : ''}
       </article>
 
       ${combos.length > 0 ? combos.map((combo) => builderComboCard(combo.title, combo.note, combo.legs)).join("") : messageCard("No builder suggestions found for this fixture.")}
