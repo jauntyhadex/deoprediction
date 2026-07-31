@@ -456,7 +456,7 @@ async function loadFixtures() {
         <p class="muted">${display(fixture.competition?.code)} - ${display(fixture.competition?.name)}</p>
         <p>Status: <strong>${display(fixture.status)}</strong></p>
         <p>${localTime(fixture.kickoff_time)}</p>
-        <button onclick="loadFixtureDetail(${fixture.id})">View predictions</button>
+        <button onclick="loadFixtureDetail(${fixture.id})">View predictions below</button>
       </article>
     `);
   } catch (error) {
@@ -490,6 +490,8 @@ async function loadFixtureDetail(fixtureId) {
     ${messageCard("Loading fixture predictions...")}
   `;
 
+  container.scrollIntoView({ behavior: "smooth", block: "start" });
+
   try {
     const data = await fetchJson(`${API}/prediction-picks/fixture/${fixtureId}`);
 
@@ -511,10 +513,10 @@ async function loadFixtureDetail(fixtureId) {
 
       <h3>Official Picks</h3>
       <div>
-        ${picks.length > 0 ? picks.map(pickCard).join("") : messageCard("No official picks passed the rules for this fixture.")}
+        ${picks.length > 0 ? picks.map(pickCard).join("") : messageCard("No official picks passed the strict quality gate for this fixture yet. Check Market Probabilities below for experimental prices.")}
       </div>
 
-      <h3>Market Probabilities</h3>
+      <h3>Experimental Market Probabilities</h3>
       <div>
         ${markets.length > 0 ? markets.map(fixtureMarketCard).join("") : messageCard("No market probabilities found for this fixture.")}
       </div>
