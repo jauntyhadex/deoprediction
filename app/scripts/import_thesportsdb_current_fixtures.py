@@ -39,6 +39,12 @@ TARGET_LEAGUES = [
         "existing_code": "APIF-104",
     },
     {
+        "country": "USA",
+        "league_id": 4684,
+        "league_name": "American USL Championship",
+        "existing_code": None,
+    },
+    {
         "country": "Australia",
         "league_id": 5011,
         "league_name": "Australia New South Wales NPL",
