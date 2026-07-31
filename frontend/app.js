@@ -385,6 +385,41 @@ async function loadHome() {
   }
 }
 
+
+function clientSideSearchItems(items, search) {
+  const term = (search || "").trim().toLowerCase();
+
+  if (!term) {
+    return items;
+  }
+
+  return items.filter((item) => JSON.stringify(item || {}).toLowerCase().includes(term));
+}
+
+function ensureMarketSearchInput() {
+  if (document.getElementById("market-search")) {
+    return;
+  }
+
+  const marketFilter = document.getElementById("market-filter");
+
+  if (!marketFilter || !marketFilter.parentElement) {
+    return;
+  }
+
+  const input = document.createElement("input");
+  input.id = "market-search";
+  input.placeholder = "Search team, league, APIF, TSD...";
+  input.setAttribute("aria-label", "Search top markets");
+
+  input.addEventListener("input", () => {
+    clearTimeout(window.marketSearchTimer);
+    window.marketSearchTimer = setTimeout(loadMarkets, 300);
+  });
+
+  marketFilter.parentElement.insertBefore(input, marketFilter);
+}
+
 async function loadFixtures() {
   setLoading("fixtures", "Loading fixtures...");
   document.getElementById("fixture-detail").innerHTML = "";
@@ -396,12 +431,11 @@ async function loadFixtures() {
   updateDateLabel("fixture-date-label", selectedDate);
 
   const params = new URLSearchParams({
-    limit: "20",
+    limit: "100",
     upcoming_only: String(upcomingOnly),
   });
 
-  if (builderCompetitionId) params.set("competition_id", builderCompetitionId);
-  if (search) params.set("search", search);
+  // Search is applied locally so APIF/TSD competition names and codes work.
   if (status) params.set("status", status);
 
   const fixtureDateRange = dateRangeParams(selectedDate);
@@ -414,10 +448,12 @@ async function loadFixtures() {
   try {
     const data = await fetchJson(`${API}/fixtures?${params.toString()}`);
 
-    renderCards("fixtures", sortByKickoff(data.fixtures), "No fixtures found.", (fixture) => `
+    const fixtures = clientSideSearchItems(sortByKickoff(data.fixtures || []), search);
+
+    renderCards("fixtures", fixtures, "No fixtures found.", (fixture) => `
       <article class="card">
         <h3>${display(fixture.home_team?.name)} vs ${display(fixture.away_team?.name)}</h3>
-        <p class="muted">${display(fixture.competition?.name)}</p>
+        <p class="muted">${display(fixture.competition?.code)} - ${display(fixture.competition?.name)}</p>
         <p>Status: <strong>${display(fixture.status)}</strong></p>
         <p>${localTime(fixture.kickoff_time)}</p>
         <button onclick="loadFixtureDetail(${fixture.id})">View predictions</button>
@@ -534,16 +570,18 @@ async function loadPicks() {
 }
 
 async function loadMarkets() {
+  ensureMarketSearchInput();
   setLoading("markets", "Loading markets...");
 
   const market = document.getElementById("market-filter").value;
   const selection = document.getElementById("market-selection").value;
   const line = document.getElementById("market-line").value.trim();
   const selectedDate = document.getElementById("market-date").value;
+  const search = document.getElementById("market-search")?.value.trim() || "";
   updateDateLabel("market-date-label", selectedDate);
 
   const params = new URLSearchParams({
-    limit: "20",
+    limit: "100",
     upcoming_only: "true",
   });
 
@@ -569,7 +607,9 @@ async function loadMarkets() {
 
   try {
     const data = await fetchJson(`${API}/prediction-picks/markets/top?${params.toString()}`);
-    renderCards("markets", sortByKickoff(data.markets), "No markets found for this date and filter.", marketCard);
+    const markets = clientSideSearchItems(sortByKickoff(data.markets || []), search);
+
+    renderCards("markets", markets, "No markets found for this date and filter.", marketCard);
   } catch (error) {
     setError("markets", error.message);
   }
