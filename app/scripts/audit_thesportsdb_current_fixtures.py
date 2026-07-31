@@ -164,6 +164,9 @@ def main() -> None:
         for league in leagues[:10]:
             print(f"  CANDIDATE | {league.get('idLeague')} | {league.get('strLeague')}")
 
+        for league in leagues[:10]:
+            print(f"  CANDIDATE | {league.get('idLeague')} | {league.get('strLeague')}")
+
         targets = [name for target_country, name in TARGET_LEAGUES if target_country == country]
 
         for expected_name in targets:
