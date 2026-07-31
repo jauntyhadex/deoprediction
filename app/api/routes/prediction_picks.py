@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+from sqlalchemy import or_
 from app.models.team import Team
 from app.models.prediction_market import PredictionMarket
 from app.models.prediction import Prediction
@@ -534,6 +536,153 @@ def get_fixture_experimental_markets(db, fixture_id: int, limit: int) -> list[di
         )
 
     return markets
+
+
+
+def parse_experimental_date(value: str | None, end_of_day: bool = False):
+    if not value:
+        return None
+
+    try:
+        if "T" not in value:
+            suffix = "T23:59:59" if end_of_day else "T00:00:00"
+            value = value + suffix
+
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+        if parsed.tzinfo is not None:
+            parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+
+        return parsed
+    except ValueError:
+        return None
+
+
+@router.get("/markets/experimental")
+def get_experimental_prediction_markets(
+    limit: int = Query(default=200, ge=1, le=500),
+    upcoming_only: bool = True,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    market_type: str | None = None,
+    selection: str | None = None,
+    line: float | None = None,
+    search: str | None = None,
+    db: Session = Depends(get_db),
+):
+    home_team = aliased(Team)
+    away_team = aliased(Team)
+
+    query = (
+        db.query(
+            PredictionMarket,
+            Fixture,
+            Prediction,
+            Competition,
+            home_team,
+            away_team,
+        )
+        .join(Fixture, PredictionMarket.fixture_id == Fixture.id)
+        .join(Prediction, Prediction.fixture_id == Fixture.id)
+        .join(Competition, Fixture.competition_id == Competition.id)
+        .join(home_team, Fixture.home_team_id == home_team.id)
+        .join(away_team, Fixture.away_team_id == away_team.id)
+        .filter(
+            or_(
+                Competition.code.like("APIF-%"),
+                Competition.code.like("TSD-%"),
+            )
+        )
+    )
+
+    if upcoming_only:
+        query = query.filter(
+            Fixture.kickoff_time >= datetime.now(timezone.utc).replace(tzinfo=None)
+        )
+
+    parsed_from = parse_experimental_date(date_from)
+    parsed_to = parse_experimental_date(date_to, end_of_day=True)
+
+    if parsed_from:
+        query = query.filter(Fixture.kickoff_time >= parsed_from)
+
+    if parsed_to:
+        query = query.filter(Fixture.kickoff_time <= parsed_to)
+
+    if market_type:
+        query = query.filter(PredictionMarket.market_type == market_type)
+
+    if selection:
+        query = query.filter(PredictionMarket.selection == selection)
+
+    if line is not None:
+        query = query.filter(PredictionMarket.line == line)
+
+    if search:
+        like = f"%{search}%"
+        query = query.filter(
+            or_(
+                Competition.code.ilike(like),
+                Competition.name.ilike(like),
+                Competition.country.ilike(like),
+                home_team.name.ilike(like),
+                away_team.name.ilike(like),
+                PredictionMarket.market_type.ilike(like),
+                PredictionMarket.selection.ilike(like),
+            )
+        )
+
+    rows = (
+        query.order_by(
+            Fixture.kickoff_time.asc(),
+            PredictionMarket.confidence.desc(),
+            PredictionMarket.probability.desc(),
+        )
+        .limit(limit)
+        .all()
+    )
+
+    markets = []
+
+    for market, fixture, prediction, competition, home, away in rows:
+        confidence = round(float(market.confidence or 0), 2)
+        probability = round(float(market.probability or 0), 2)
+        fair_odds = round(float(market.fair_odds or 0), 2)
+
+        markets.append(
+            {
+                "market_id": market.id,
+                "fixture_id": fixture.id,
+                "competition_id": competition.id,
+                "competition_name": competition.name,
+                "competition_status": "EXPERIMENTAL",
+                "competition_status_message": (
+                    "Experimental underground market probability. "
+                    "Not an official quality-gated pick."
+                ),
+                "home_team": home.name,
+                "away_team": away.name,
+                "kickoff_time": fixture_kickoff_iso(fixture.kickoff_time),
+                "status": fixture.status,
+                "market_type": market.market_type,
+                "selection": market.selection,
+                "line": market.line,
+                "probability": probability,
+                "fair_odds": fair_odds,
+                "confidence": confidence,
+                "market_confidence": confidence,
+                "fixture_result": fixture_result_label(prediction),
+                "quality_gate": "EXPERIMENTAL",
+                "data_quality": "LIMITED",
+                "score": confidence,
+                "grade": "EXP",
+            }
+        )
+
+    return {
+        "count": len(markets),
+        "markets": markets,
+    }
 
 @router.get("/fixture/{fixture_id}")
 def get_fixture_prediction_picks(
