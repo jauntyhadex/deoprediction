@@ -1,3 +1,10 @@
+from app.models.team import Team
+from app.models.prediction_market import PredictionMarket
+from app.models.prediction import Prediction
+from app.models.fixture import Fixture
+from app.models.competition import Competition
+from sqlalchemy.orm import aliased
+from datetime import timezone
 from datetime import UTC, datetime
 
 from fastapi import (
@@ -439,6 +446,95 @@ def get_top_prediction_markets(
     }
 
 
+
+
+def fixture_kickoff_iso(kickoff_time):
+    if kickoff_time is None:
+        return None
+
+    if kickoff_time.tzinfo is None:
+        return kickoff_time.isoformat() + "Z"
+
+    return kickoff_time.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def fixture_result_label(prediction):
+    values = {
+        "HOME": getattr(prediction, "home_win_probability", 0) or 0,
+        "DRAW": getattr(prediction, "draw_probability", 0) or 0,
+        "AWAY": getattr(prediction, "away_win_probability", 0) or 0,
+    }
+
+    return max(values, key=values.get)
+
+
+def get_fixture_experimental_markets(db, fixture_id: int, limit: int) -> list[dict]:
+    home_team = aliased(Team)
+    away_team = aliased(Team)
+
+    rows = (
+        db.query(
+            PredictionMarket,
+            Fixture,
+            Prediction,
+            Competition,
+            home_team,
+            away_team,
+        )
+        .join(Fixture, PredictionMarket.fixture_id == Fixture.id)
+        .join(Prediction, Prediction.fixture_id == Fixture.id)
+        .join(Competition, Fixture.competition_id == Competition.id)
+        .join(home_team, Fixture.home_team_id == home_team.id)
+        .join(away_team, Fixture.away_team_id == away_team.id)
+        .filter(Fixture.id == fixture_id)
+        .order_by(
+            PredictionMarket.confidence.desc(),
+            PredictionMarket.probability.desc(),
+            PredictionMarket.fair_odds.asc(),
+        )
+        .limit(limit)
+        .all()
+    )
+
+    markets = []
+
+    for market, fixture, prediction, competition, home, away in rows:
+        confidence = round(float(market.confidence or 0), 2)
+        probability = round(float(market.probability or 0), 2)
+        fair_odds = round(float(market.fair_odds or 0), 2)
+
+        markets.append(
+            {
+                "market_id": market.id,
+                "fixture_id": fixture.id,
+                "competition_id": competition.id,
+                "competition_name": competition.name,
+                "competition_status": "EXPERIMENTAL",
+                "competition_status_message": (
+                    "Experimental market probabilities. No official quality-gated "
+                    "pick passed yet for this fixture."
+                ),
+                "home_team": home.name,
+                "away_team": away.name,
+                "kickoff_time": fixture_kickoff_iso(fixture.kickoff_time),
+                "status": fixture.status,
+                "market_type": market.market_type,
+                "selection": market.selection,
+                "line": market.line,
+                "probability": probability,
+                "fair_odds": fair_odds,
+                "confidence": confidence,
+                "market_confidence": confidence,
+                "fixture_result": fixture_result_label(prediction),
+                "quality_gate": "EXPERIMENTAL",
+                "data_quality": "LIMITED",
+                "score": confidence,
+                "grade": "EXP",
+            }
+        )
+
+    return markets
+
 @router.get("/fixture/{fixture_id}")
 def get_fixture_prediction_picks(
     fixture_id: int,
@@ -475,11 +571,17 @@ def get_fixture_prediction_picks(
         one_per_fixture=False,
     )
 
-    if not picks and not markets:
+    if not markets:
+        markets = get_fixture_experimental_markets(
+            db=db,
+            fixture_id=fixture_id,
+            limit=market_limit,
+        )
 
+    if not picks and not markets:
         raise HTTPException(
             status_code=404,
-            detail="Prediction picks not found.",
+            detail="Prediction picks or markets not found.",
         )
 
     return {
