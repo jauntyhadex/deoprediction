@@ -1,3 +1,4 @@
+import random
 from datetime import datetime, timezone
 from sqlalchemy import or_
 from app.models.team import Team
@@ -682,6 +683,160 @@ def get_experimental_prediction_markets(
     return {
         "count": len(markets),
         "markets": markets,
+    }
+
+
+
+def accumulator_leg_key(leg: dict) -> tuple:
+    return (
+        leg.get("fixture_id"),
+        leg.get("market_type"),
+        leg.get("selection"),
+        leg.get("line"),
+    )
+
+
+def accumulator_fixture_key(leg: dict):
+    return leg.get("fixture_id")
+
+
+def accumulator_decimal(value, fallback=1.0) -> float:
+    try:
+        parsed = float(value)
+        if parsed <= 0:
+            return fallback
+        return parsed
+    except (TypeError, ValueError):
+        return fallback
+
+
+@router.get("/accumulators/bulk")
+def get_bulk_accumulators(
+    count: int = Query(default=100, ge=1, le=5000),
+    legs: int = Query(default=5, ge=2, le=20),
+    pool_limit: int = Query(default=500, ge=20, le=2000),
+    minimum_probability: float = Query(default=50.0, ge=0.0, le=100.0),
+    minimum_fair_odds: float = Query(default=1.2, ge=1.0, le=100.0),
+    max_same_competition: int = Query(default=4, ge=1, le=20),
+    db: Session = Depends(get_db),
+):
+    service = PredictionMarketService(db)
+
+    pool = service.get_top_markets(
+        limit=pool_limit,
+        upcoming_only=True,
+        days_ahead=None,
+        minimum_fair_odds=minimum_fair_odds,
+        maximum_fair_odds=100.0,
+        minimum_probability=minimum_probability,
+        minimum_market_confidence=0.0,
+        one_per_fixture=False,
+    )
+
+    pool = [
+        market for market in pool
+        if str(market.get("grade", "")).upper() in {"A+", "A", "B"}
+    ]
+
+    if len(pool) < legs:
+        return {
+            "count": 0,
+            "requested": count,
+            "legs_per_accumulator": legs,
+            "pool_size": len(pool),
+            "accumulators": [],
+            "message": "Not enough official markets to build accumulators with these filters.",
+        }
+
+    ranked_pool = sorted(
+        pool,
+        key=lambda item: (
+            accumulator_decimal(item.get("probability"), 0),
+            accumulator_decimal(item.get("market_confidence") or item.get("confidence"), 0),
+            accumulator_decimal(item.get("fair_odds"), 1),
+        ),
+        reverse=True,
+    )
+
+    accumulators = []
+    seen_slips = set()
+    attempts = 0
+    max_attempts = count * 120
+
+    while len(accumulators) < count and attempts < max_attempts:
+        attempts += 1
+
+        if attempts % 3 == 0:
+            sample_pool = ranked_pool[: min(len(ranked_pool), max(pool_limit // 2, legs * 3))]
+        else:
+            sample_pool = ranked_pool
+
+        selected = []
+        used_fixtures = set()
+        competition_counts = {}
+
+        for market in random.sample(sample_pool, k=len(sample_pool)):
+            fixture_id = accumulator_fixture_key(market)
+
+            if fixture_id in used_fixtures:
+                continue
+
+            competition_name = market.get("competition_name") or "Unknown"
+            current_competition_count = competition_counts.get(competition_name, 0)
+
+            if current_competition_count >= max_same_competition:
+                continue
+
+            selected.append(market)
+            used_fixtures.add(fixture_id)
+            competition_counts[competition_name] = current_competition_count + 1
+
+            if len(selected) == legs:
+                break
+
+        if len(selected) != legs:
+            continue
+
+        slip_key = tuple(sorted(accumulator_leg_key(leg) for leg in selected))
+
+        if slip_key in seen_slips:
+            continue
+
+        seen_slips.add(slip_key)
+
+        total_odds = 1.0
+        combined_probability = 1.0
+        average_confidence = 0.0
+
+        for leg in selected:
+            total_odds *= accumulator_decimal(leg.get("fair_odds"), 1.0)
+            combined_probability *= accumulator_decimal(leg.get("probability"), 0.0) / 100.0
+            average_confidence += accumulator_decimal(
+                leg.get("market_confidence") or leg.get("confidence"),
+                0.0,
+            )
+
+        average_confidence = average_confidence / len(selected)
+
+        accumulators.append(
+            {
+                "rank": len(accumulators) + 1,
+                "legs_count": len(selected),
+                "total_fair_odds": round(total_odds, 2),
+                "combined_probability": round(combined_probability * 100.0, 4),
+                "average_confidence": round(average_confidence, 2),
+                "grade": "A" if average_confidence >= 70 else "B",
+                "legs": selected,
+            }
+        )
+
+    return {
+        "count": len(accumulators),
+        "requested": count,
+        "legs_per_accumulator": legs,
+        "pool_size": len(pool),
+        "accumulators": accumulators,
+        "message": "Official accumulator slips generated.",
     }
 
 @router.get("/fixture/{fixture_id}")
