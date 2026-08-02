@@ -523,7 +523,7 @@ async function loadFixtureDetail(fixtureId) {
 
       <h3>Official Picks</h3>
       <div>
-        ${picks.length > 0 ? picks.map(pickCard).join("") : messageCard("No official picks passed the strict quality gate for this fixture yet. Check Market Probabilities below for experimental prices.")}
+        ${picks.length > 0 ? picks.map(pickCard).join("") : messageCard("No official picks passed the strict quality gate for this fixture yet.")}
       </div>
 
       <h3>Official Fixture Prediction</h3>
@@ -590,7 +590,6 @@ async function loadMarkets() {
   const line = document.getElementById("market-line").value.trim();
   const selectedDate = document.getElementById("market-date").value;
   const search = document.getElementById("market-search")?.value.trim() || "";
-  const experimental = false;
   updateDateLabel("market-date-label", selectedDate);
 
   const params = new URLSearchParams({
@@ -736,24 +735,11 @@ function marketLegLabel(market) {
   return `${display(market.market_type)}: ${display(market.selection)} ${lineValue(market.line)}`;
 }
 
-function isExperimentalMarket(market) {
-  return market.grade === ""
-    || market.quality_gate === "ERIMENTAL"
-    || market.competition_status === "ERIMENTAL";
-}
 
 function isPublicOfficialMarket(market) {
   if (!market) return false;
 
   const grade = String(market.grade || "").toUpperCase();
-  const gate = String(market.quality_gate || "").toUpperCase();
-  const status = String(market.competition_status || "").toUpperCase();
-
-  if (grade === "EXP") return false;
-  if (grade === "RESEARCH") return false;
-  if (gate === "EXPERIMENTAL") return false;
-  if (status === "EXPERIMENTAL") return false;
-  if (status.includes("RESEARCH")) return false;
 
   return ["A+", "A", "B"].includes(grade);
 }
@@ -789,7 +775,7 @@ function builderComboCard(title, note, legs) {
       <p>${display(leg.home_team)} vs ${display(leg.away_team)} - ${localTime(leg.kickoff_time)}</p>
       <p>Probability: <strong>${display(leg.probability)}%</strong> - Fair odds: <strong>${display(leg.fair_odds)}</strong> - Grade: <strong>${display(leg.grade)}</strong></p>
       ${oddsWarning(leg.fair_odds)}
-      ${isExperimentalMarket(leg) ? '<p class="risk-warning"></p>' : ''}
+      
       ${reliabilityWarning(leg.competition_status, leg.competition_status_message)}
     </div>
   `).join("");
@@ -1156,14 +1142,14 @@ function accumulatorLegCard(leg, index) {
     <article class="card">
       <div class="row">
         <h3>Leg ${index + 1}: ${display(leg.home_team)} vs ${display(leg.away_team)}</h3>
-        <span class="badge">${display(isExperimentalMarket(leg) ? "OFFICIAL" : leg.grade)}</span>
+        <span class="badge">${display(leg.grade)}</span>
       </div>
       <p class="muted">${display(leg.competition_name)} - ${localTime(leg.kickoff_time)}</p>
       <p><strong>${display(leg.market_type)}</strong>: ${display(leg.selection)} ${lineValue(leg.line)}</p>
       <p>Probability: <strong>${display(leg.probability)}%</strong> - Fair odds: <strong>${display(leg.fair_odds)}</strong></p>
       <p>Score: <strong>${display(leg.score)}</strong> - Gate: <strong>${display(leg.quality_gate)}</strong></p>
       ${oddsWarning(leg.fair_odds)}
-      ${isExperimentalMarket(leg) ? '<p class="risk-warning"></p>' : ''}
+      
       ${reliabilityWarning(leg.competition_status, leg.competition_status_message)}
     </article>
   `;
