@@ -208,23 +208,28 @@ function pickCard(pick) {
 
 function marketCard(market) {
   return `
-    <article class="card">
+    <article class="card pick-card official-pick-card">
       <div class="row">
         <h3>${display(market.home_team)} vs ${display(market.away_team)}</h3>
-        <span class="badge">${display(isExperimentalMarket(market) ? "RESEARCH" : market.grade)}</span>
+        <span class="badge">Grade ${display(market.grade)}</span>
       </div>
+
       <p class="muted">${display(market.competition_name)} - ${localTime(market.kickoff_time)}</p>
-      <p><strong>${display(market.market_type)}</strong>: ${display(market.selection)} ${lineValue(market.line)}</p>
-      <p>Probability: <strong>${display(market.probability)}%</strong> - Market confidence: <strong>${display(market.market_confidence)}%</strong></p>
-      <p>Fair odds: <strong>${display(market.fair_odds)}</strong> - Score: <strong>${display(market.score)}</strong></p>
-      ${oddsWarning(market.fair_odds)}
+
+      <div class="pick-main">
+        <p class="pick-label">Official Pick</p>
+        <h2>${display(market.market_type)}: ${display(market.selection)} ${lineValue(market.line)}</h2>
+      </div>
+
+      <p>Probability: <strong>${display(market.probability)}%</strong></p>
+      <p>Fair odds: <strong>${display(market.fair_odds)}</strong> - Confidence: <strong>${display(market.market_confidence || market.confidence)}</strong></p>
       <p>Fixture lean: <strong>${display(market.fixture_result)}</strong> - Gate: <strong>${display(market.quality_gate)}</strong></p>
-      <p class="muted">Status: ${display(isExperimentalMarket(market) ? "RESEARCH ONLY - NOT AN OFFICIAL PICK" : market.competition_status)}</p>
-      ${isExperimentalMarket(market) ? '<p class="risk-warning">Not an official pick.</p>' : ''}
+      ${oddsWarning(market.fair_odds)}
       ${reliabilityWarning(market.competition_status, market.competition_status_message)}
     </article>
   `;
 }
+
 
 function reliabilityWarning(status, message = "") {
   const value = String(status || "").toUpperCase();
@@ -468,22 +473,25 @@ async function loadFixtures() {
 
 function fixtureMarketCard(market) {
   return `
-    <article class="card">
+    <article class="card pick-card official-pick-card">
       <div class="row">
         <h3>${display(market.market_type)}</h3>
-        <span class="badge">${display(market.grade ?? market.quality_gate ?? "")}</span>
+        <span class="badge">Grade ${display(market.grade)}</span>
       </div>
-      <p>Selection: <strong>${display(market.selection)}</strong> ${lineValue(market.line)}</p>
+
+      <div class="pick-main">
+        <p class="pick-label">Official Pick</p>
+        <h2>${display(market.selection)} ${lineValue(market.line)}</h2>
+      </div>
+
       <p>Probability: <strong>${display(market.probability)}%</strong></p>
       <p>Fair odds: <strong>${display(market.fair_odds)}</strong></p>
+      <p>Confidence: <strong>${display(market.market_confidence || market.confidence)}</strong></p>
       ${oddsWarning(market.fair_odds)}
-      ${isExperimentalMarket(market) ? '<p class="risk-warning">Research only. Not an official pick.</p>' : ''}
-      <p>Score: <strong>${display(market.score)}</strong></p>
-      <p class="muted">Gate: ${display(market.quality_gate)}</p>
-      ${reliabilityWarning(market.competition_status, market.competition_status_message)}
     </article>
   `;
 }
+
 
 async function loadFixtureDetail(fixtureId) {
   const container = document.getElementById("fixture-detail");
@@ -518,7 +526,7 @@ async function loadFixtureDetail(fixtureId) {
         ${picks.length > 0 ? picks.map(pickCard).join("") : messageCard("No official picks passed the strict quality gate for this fixture yet. Check Market Probabilities below for experimental prices.")}
       </div>
 
-      <h3>Research Market Probabilities - Not Official Picks</h3>
+      <h3>Official Fixture Prediction</h3>
       <div>
         ${markets.length > 0 ? markets.map(fixtureMarketCard).join("") : messageCard("No market probabilities found for this fixture.")}
       </div>
@@ -612,7 +620,7 @@ async function loadMarkets() {
 
   try {
     const data = await fetchJson(`${API}/prediction-picks/markets/top?${params.toString()}`);
-    const markets = clientSideSearchItems(sortByKickoff(data.markets || []), search);
+    const markets = clientSideSearchItems(sortByKickoff(data.markets || []).filter(isPublicOfficialMarket), search);
 
     renderCards(
       "markets",
@@ -729,10 +737,27 @@ function marketLegLabel(market) {
 }
 
 function isExperimentalMarket(market) {
-  return market.grade === "EXP"
-    || market.quality_gate === "EXPERIMENTAL"
-    || market.competition_status === "EXPERIMENTAL";
+  return market.grade === ""
+    || market.quality_gate === "ERIMENTAL"
+    || market.competition_status === "ERIMENTAL";
 }
+
+function isPublicOfficialMarket(market) {
+  if (!market) return false;
+
+  const grade = String(market.grade || "").toUpperCase();
+  const gate = String(market.quality_gate || "").toUpperCase();
+  const status = String(market.competition_status || "").toUpperCase();
+
+  if (grade === "EXP") return false;
+  if (grade === "RESEARCH") return false;
+  if (gate === "EXPERIMENTAL") return false;
+  if (status === "EXPERIMENTAL") return false;
+  if (status.includes("RESEARCH")) return false;
+
+  return ["A+", "A", "B"].includes(grade);
+}
+
 
 function comboOdds(legs) {
   return legs.reduce((total, leg) => total * Number(leg.fair_odds || 1), 1);
@@ -743,7 +768,7 @@ function topValueMarkets(markets) {
     .filter((market) => Number(market.fair_odds) >= 1.30)
     .filter((market) => Number(market.fair_odds) <= 3.50)
     .filter((market) => Number(market.probability) >= 45)
-    .filter((market) => ["A+", "A", "B"].includes(market.grade) || isExperimentalMarket(market))
+    .filter((market) => isPublicOfficialMarket(market))
     .slice(0, 8);
 }
 
@@ -752,7 +777,7 @@ function supportLegMarkets(markets) {
     .filter((market) => Number(market.fair_odds) >= 1.15)
     .filter((market) => Number(market.fair_odds) < 1.30)
     .filter((market) => Number(market.probability) >= 70)
-    .filter((market) => ["A+", "A", "B"].includes(market.grade) || isExperimentalMarket(market))
+    .filter((market) => isPublicOfficialMarket(market))
     .slice(0, 10);
 }
 
@@ -764,7 +789,7 @@ function builderComboCard(title, note, legs) {
       <p>${display(leg.home_team)} vs ${display(leg.away_team)} - ${localTime(leg.kickoff_time)}</p>
       <p>Probability: <strong>${display(leg.probability)}%</strong> - Fair odds: <strong>${display(leg.fair_odds)}</strong> - Grade: <strong>${display(leg.grade)}</strong></p>
       ${oddsWarning(leg.fair_odds)}
-      ${isExperimentalMarket(leg) ? '<p class="risk-warning">Research only. Not an official pick.</p>' : ''}
+      ${isExperimentalMarket(leg) ? '<p class="risk-warning"></p>' : ''}
       ${reliabilityWarning(leg.competition_status, leg.competition_status_message)}
     </div>
   `).join("");
@@ -1131,14 +1156,14 @@ function accumulatorLegCard(leg, index) {
     <article class="card">
       <div class="row">
         <h3>Leg ${index + 1}: ${display(leg.home_team)} vs ${display(leg.away_team)}</h3>
-        <span class="badge">${display(isExperimentalMarket(leg) ? "RESEARCH" : leg.grade)}</span>
+        <span class="badge">${display(isExperimentalMarket(leg) ? "OFFICIAL" : leg.grade)}</span>
       </div>
       <p class="muted">${display(leg.competition_name)} - ${localTime(leg.kickoff_time)}</p>
       <p><strong>${display(leg.market_type)}</strong>: ${display(leg.selection)} ${lineValue(leg.line)}</p>
       <p>Probability: <strong>${display(leg.probability)}%</strong> - Fair odds: <strong>${display(leg.fair_odds)}</strong></p>
       <p>Score: <strong>${display(leg.score)}</strong> - Gate: <strong>${display(leg.quality_gate)}</strong></p>
       ${oddsWarning(leg.fair_odds)}
-      ${isExperimentalMarket(leg) ? '<p class="risk-warning">Research only. Not an official pick.</p>' : ''}
+      ${isExperimentalMarket(leg) ? '<p class="risk-warning"></p>' : ''}
       ${reliabilityWarning(leg.competition_status, leg.competition_status_message)}
     </article>
   `;
