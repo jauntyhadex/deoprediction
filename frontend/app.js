@@ -1156,71 +1156,77 @@ function accumulatorLegCard(leg, index) {
 }
 
 async function loadAccumulator() {
-  setLoading("accumulator-results", "Building accumulator slip...");
-
-  const targetOdds = document.getElementById("accumulator-target").value;
-  const mode = document.getElementById("accumulator-mode").value;
-  const quality = document.getElementById("accumulator-quality").value;
-  const maxLegs = document.getElementById("accumulator-max-legs").value;
-  const marketGroup = document.getElementById("accumulator-market-group").value;
-  const accumulatorCompetitionId = document.getElementById("accumulator-competition")?.value || "";
-  const selectedDate = document.getElementById("accumulator-date").value;
-
-  updateDateLabel("accumulator-date-label", selectedDate);
+  const targetOdds = document.getElementById("accumulator-target-odds")?.value || "1000";
+  const maxLegs = document.getElementById("accumulator-max-legs")?.value || "30";
+  const count = document.getElementById("accumulator-count")?.value || "20";
 
   const params = new URLSearchParams({
-    limit: "100",
-    upcoming_only: "true",
-    one_per_fixture: mode === "safer" ? "true" : "false",
-    minimum_fair_odds: "1.01",
-    maximum_fair_odds: "10.00",
+    count,
+    target_odds: targetOdds,
+    min_legs: "2",
+    max_legs: maxLegs,
+    pool_limit: "3000",
+    days_ahead: "30",
     minimum_probability: "1",
-    minimum_market_confidence: "0",
+    minimum_fair_odds: "1.05",
+    maximum_fair_odds: "100",
+    max_overshoot_percent: "35",
   });
 
-  if (accumulatorCompetitionId) params.set("competition_id", accumulatorCompetitionId);
+  const container = document.getElementById("accumulator-results") || document.getElementById("accumulators");
 
-  const accumulatorDateRange = dateRangeParams(selectedDate);
-  if (accumulatorDateRange) {
-    params.set("date_from", accumulatorDateRange.date_from);
-    params.set("date_to", accumulatorDateRange.date_to);
-    params.set("upcoming_only", "false");
-  }
+  if (!container) return;
+
+  container.innerHTML = loadingCard("Building target-odds accumulators...");
 
   try {
-    const markets = await fetchAccumulatorMarkets(params, marketGroup);
-    const legs = chooseAccumulatorLegs(markets, targetOdds, mode, marketGroup, quality, maxLegs);
-    const combinedOdds = accumulatorCombinedOdds(legs);
-    const competitionSelect = document.getElementById("accumulator-competition");
-    const competitionLabel = competitionSelect?.selectedOptions?.[0]?.textContent || "All competitions";
-    const reachedTarget = combinedOdds >= Number(targetOdds);
+    const data = await fetchJson(`${API}/prediction-picks/accumulators/target?${params.toString()}`);
+    const slips = data.accumulators || [];
 
-    document.getElementById("accumulator-results").innerHTML = `
+    container.innerHTML = `
       <article class="card detail-card">
-        <h3>Target ${display(targetOdds)} odds</h3>
-        <p>Estimated combined fair odds: <strong>${combinedOdds.toFixed(2)}</strong></p>
-        <p>Mode: <strong>${mode === "safer" ? "Safer - one leg per game" : "Aggressive - multiple legs per game"}</strong></p>
-        <p>Slip style: <strong>${display(accumulatorQualityRules(quality).label)}</strong></p>
-        <p>Competition: <strong>${display(competitionLabel)}</strong></p>
-        <p>Market group: <strong>${display(marketGroup.replaceAll("_", " "))}</strong></p>
-        <p>Legs selected: <strong>${legs.length}</strong> / max ${display(maxLegs)}</p>
-        <p class="${Number(targetOdds) >= 2000 ? "risk-warning" : "risk-caution"}">${display(accumulatorRiskText(targetOdds))}</p>
-        <p class="${reachedTarget ? "risk-good" : "risk-warning"}">
-          ${reachedTarget
-            ? "Target reached from current available markets."
-            : "Target not reached. Try Max 20/30 legs, Extreme slip, All competitions, or All market groups."}
-        </p>
-        <p class="muted">Football only now. Mixed football, basketball, tennis, and table tennis slips will come after those sports are added.</p>
+        <h3>Target Odds Accumulators</h3>
+        <p>Requested: <strong>${display(data.requested)}</strong></p>
+        <p>Returned: <strong>${display(data.count)}</strong></p>
+        <p>Target odds: <strong>${display(data.target_odds)}</strong></p>
+        <p>Allowed range: <strong>${display(data.minimum_total_odds)}</strong> - <strong>${display(data.maximum_total_odds)}</strong></p>
+        <p>Market pool: <strong>${display(data.pool_size)}</strong></p>
       </article>
 
-      ${legs.length > 0
-        ? legs.map(accumulatorLegCard).join("")
-        : messageCard(competitionLabel !== "All competitions"
-            ? `No accumulator legs found for ${competitionLabel}. This competition may have no upcoming fixtures or no eligible prediction markets in the current database.`
-            : "No accumulator legs found for this date.")}
+      ${slips.length ? slips.map((slip) => `
+        <article class="card detail-card">
+          <div class="row">
+            <h3>Slip #${display(slip.rank)}</h3>
+            <span class="badge">${display(slip.legs_count)} legs</span>
+          </div>
+
+          <div class="pick-main">
+            <p class="pick-label">Total Fair Odds</p>
+            <h2>${display(slip.total_fair_odds)}</h2>
+          </div>
+
+          <p>Target: <strong>${display(slip.target_odds)}</strong></p>
+          <p>Combined probability: <strong>${display(slip.combined_probability)}%</strong></p>
+          <p>Average confidence: <strong>${display(slip.average_confidence)}%</strong></p>
+
+          <details>
+            <summary>View legs</summary>
+            <div class="stack">
+              ${(slip.legs || []).map((leg, index) => `
+                <div class="mini-card">
+                  <strong>Leg ${index + 1}: ${display(leg.home_team)} vs ${display(leg.away_team)}</strong>
+                  <p class="muted">${display(leg.competition_name)} - ${localTime(leg.kickoff_time)}</p>
+                  <p>${display(leg.market_type)}: <strong>${display(leg.selection)} ${lineValue(leg.line)}</strong></p>
+                  <p>Fair odds: <strong>${display(leg.fair_odds)}</strong> - Probability: <strong>${display(leg.probability)}%</strong></p>
+                </div>
+              `).join("")}
+            </div>
+          </details>
+        </article>
+      `).join("") : messageCard("No accumulator found for this target.")}
     `;
   } catch (error) {
-    setError("accumulator-results", error.message);
+    renderError(container.id, error);
   }
 }
 
@@ -1369,3 +1375,7 @@ async function loadAccumulators() {
     renderError("accumulators", error);
   }
 }
+
+
+window.loadAccumulators = loadAccumulator;
+window.buildAccumulators = loadAccumulator;
