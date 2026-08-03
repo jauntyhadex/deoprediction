@@ -1,3 +1,4 @@
+import math
 from datetime import datetime, timezone, timedelta
 import random
 from sqlalchemy import or_
@@ -989,6 +990,240 @@ def get_public_football_markets(
     return {
         "count": len(markets),
         "markets": markets,
+    }
+
+
+
+def accumulator_float(value, fallback=0.0) -> float:
+    try:
+        parsed = float(value)
+        if math.isnan(parsed) or math.isinf(parsed):
+            return fallback
+        return parsed
+    except (TypeError, ValueError):
+        return fallback
+
+
+def accumulator_market_key(market: dict) -> tuple:
+    return (
+        market.get("fixture_id"),
+        market.get("market_type"),
+        market.get("selection"),
+        market.get("line"),
+    )
+
+
+def accumulator_slip_key(legs: list[dict]) -> tuple:
+    return tuple(sorted(accumulator_market_key(leg) for leg in legs))
+
+
+def accumulator_public_grade(probability: float, confidence: float) -> str:
+    if probability >= 65 and confidence >= 60:
+        return "A"
+    if probability >= 55 and confidence >= 45:
+        return "B"
+    return "C"
+
+
+@router.get("/accumulators/target")
+def get_target_odds_accumulators(
+    count: int = Query(default=100, ge=1, le=5000),
+    target_odds: float = Query(default=1000.0, ge=2.0, le=1000000.0),
+    min_legs: int = Query(default=4, ge=2, le=50),
+    max_legs: int = Query(default=20, ge=2, le=50),
+    pool_limit: int = Query(default=2000, ge=50, le=5000),
+    days_ahead: int = Query(default=30, ge=1, le=365),
+    minimum_probability: float = Query(default=1.0, ge=0.0, le=100.0),
+    minimum_fair_odds: float = Query(default=1.2, ge=1.0, le=1000.0),
+    maximum_fair_odds: float = Query(default=100.0, ge=1.0, le=1000.0),
+    max_same_competition: int = Query(default=6, ge=1, le=50),
+    db: Session = Depends(get_db),
+):
+    if min_legs > max_legs:
+        raise HTTPException(
+            status_code=400,
+            detail="min_legs cannot be greater than max_legs.",
+        )
+
+    home_team = aliased(Team)
+    away_team = aliased(Team)
+
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    end = now + timedelta(days=days_ahead)
+
+    rows = (
+        db.query(PredictionMarket, Fixture, Competition, home_team, away_team)
+        .join(Fixture, PredictionMarket.fixture_id == Fixture.id)
+        .join(Competition, Fixture.competition_id == Competition.id)
+        .join(home_team, Fixture.home_team_id == home_team.id)
+        .join(away_team, Fixture.away_team_id == away_team.id)
+        .filter(Competition.sport == "FOOTBALL")
+        .filter(Fixture.kickoff_time >= now)
+        .filter(Fixture.kickoff_time <= end)
+        .filter(PredictionMarket.probability >= minimum_probability)
+        .filter(PredictionMarket.fair_odds >= minimum_fair_odds)
+        .filter(PredictionMarket.fair_odds <= maximum_fair_odds)
+        .order_by(
+            Fixture.kickoff_time.asc(),
+            PredictionMarket.fair_odds.desc(),
+            PredictionMarket.probability.desc(),
+        )
+        .limit(pool_limit)
+        .all()
+    )
+
+    pool = []
+
+    for market, fixture, competition, home, away in rows:
+        probability = round(accumulator_float(market.probability), 2)
+        confidence = round(accumulator_float(market.confidence), 2)
+        fair_odds = round(accumulator_float(market.fair_odds), 2)
+
+        if fair_odds < minimum_fair_odds:
+            continue
+
+        pool.append(
+            {
+                "market_id": market.id,
+                "fixture_id": fixture.id,
+                "competition_name": competition.name,
+                "home_team": home.name,
+                "away_team": away.name,
+                "kickoff_time": fixture_kickoff_iso(fixture.kickoff_time),
+                "market_type": market.market_type,
+                "selection": market.selection,
+                "line": market.line,
+                "probability": probability,
+                "fair_odds": fair_odds,
+                "confidence": confidence,
+                "market_confidence": confidence,
+                "grade": accumulator_public_grade(probability, confidence),
+            }
+        )
+
+    if len(pool) < min_legs:
+        return {
+            "count": 0,
+            "requested": count,
+            "target_odds": target_odds,
+            "pool_size": len(pool),
+            "accumulators": [],
+            "message": "Not enough football markets to build accumulators.",
+        }
+
+    # High target odds need bigger prices available in the sample.
+    if target_odds >= 5000:
+        working_pool = sorted(
+            pool,
+            key=lambda item: (
+                accumulator_float(item.get("fair_odds")),
+                accumulator_float(item.get("probability")),
+            ),
+            reverse=True,
+        )
+    else:
+        working_pool = sorted(
+            pool,
+            key=lambda item: (
+                accumulator_float(item.get("probability")),
+                accumulator_float(item.get("confidence")),
+                accumulator_float(item.get("fair_odds")),
+            ),
+            reverse=True,
+        )
+
+    accumulators = []
+    seen = set()
+    max_attempts = min(max(count * 120, 5000), 250000)
+
+    for attempt in range(max_attempts):
+        if len(accumulators) >= count:
+            break
+
+        selected = []
+        used_fixtures = set()
+        competition_counts = {}
+        total_odds = 1.0
+
+        if attempt % 5 == 0:
+            candidate_pool = working_pool[: min(len(working_pool), max(300, min(pool_limit, 1200)))]
+        else:
+            candidate_pool = working_pool[:]
+
+        random.shuffle(candidate_pool)
+
+        for market in candidate_pool:
+            fixture_id = market["fixture_id"]
+
+            if fixture_id in used_fixtures:
+                continue
+
+            competition_name = market["competition_name"]
+            if competition_counts.get(competition_name, 0) >= max_same_competition:
+                continue
+
+            selected.append(market)
+            used_fixtures.add(fixture_id)
+            competition_counts[competition_name] = competition_counts.get(competition_name, 0) + 1
+            total_odds *= accumulator_float(market["fair_odds"], 1.0)
+
+            if len(selected) >= min_legs and total_odds >= target_odds:
+                break
+
+            if len(selected) >= max_legs:
+                break
+
+        if len(selected) < min_legs:
+            continue
+
+        if total_odds < target_odds:
+            continue
+
+        slip_key = accumulator_slip_key(selected)
+
+        if slip_key in seen:
+            continue
+
+        seen.add(slip_key)
+
+        combined_probability = 1.0
+        average_confidence = 0.0
+
+        for leg in selected:
+            combined_probability *= accumulator_float(leg["probability"]) / 100.0
+            average_confidence += accumulator_float(leg["confidence"])
+
+        average_confidence = average_confidence / len(selected)
+
+        accumulators.append(
+            {
+                "rank": len(accumulators) + 1,
+                "legs_count": len(selected),
+                "target_odds": round(target_odds, 2),
+                "total_fair_odds": round(total_odds, 2),
+                "combined_probability": round(combined_probability * 100.0, 6),
+                "average_confidence": round(average_confidence, 2),
+                "legs": selected,
+            }
+        )
+
+    accumulators.sort(
+        key=lambda item: (
+            abs(item["total_fair_odds"] - target_odds),
+            -item["average_confidence"],
+        )
+    )
+
+    for index, accumulator in enumerate(accumulators, start=1):
+        accumulator["rank"] = index
+
+    return {
+        "count": len(accumulators),
+        "requested": count,
+        "target_odds": target_odds,
+        "pool_size": len(pool),
+        "accumulators": accumulators,
+        "message": "Target-odds football accumulators generated.",
     }
 
 @router.get("/fixture/{fixture_id}")
