@@ -1,5 +1,5 @@
 import random
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from sqlalchemy import or_
 from app.models.team import Team
 from app.models.prediction_market import PredictionMarket
@@ -837,6 +837,158 @@ def get_bulk_accumulators(
         "pool_size": len(pool),
         "accumulators": accumulators,
         "message": "Official accumulator slips generated.",
+    }
+
+
+
+def parse_public_market_date(value: str | None, end_of_day: bool = False):
+    if not value or value in {"all", "any"}:
+        return None
+
+    try:
+        if "T" not in value:
+            suffix = "T23:59:59" if end_of_day else "T00:00:00"
+            value = value + suffix
+
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+        if parsed.tzinfo is not None:
+            parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+
+        return parsed
+    except ValueError:
+        return None
+
+
+def public_market_grade(probability: float, confidence: float) -> str:
+    if probability >= 65 and confidence >= 60:
+        return "A"
+
+    return "B"
+
+
+@router.get("/markets/public")
+def get_public_football_markets(
+    limit: int = Query(default=500, ge=1, le=2000),
+    upcoming_only: bool = True,
+    date: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    days_ahead: int | None = Query(default=None, ge=1, le=365),
+    market_type: str | None = None,
+    selection: str | None = None,
+    line: float | None = None,
+    search: str | None = None,
+    minimum_probability: float = Query(default=0.0, ge=0.0, le=100.0),
+    minimum_fair_odds: float = Query(default=1.01, ge=1.0, le=100.0),
+    maximum_fair_odds: float = Query(default=100.0, ge=1.0, le=1000.0),
+    db: Session = Depends(get_db),
+):
+    home_team = aliased(Team)
+    away_team = aliased(Team)
+
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    query = (
+        db.query(PredictionMarket, Fixture, Competition, home_team, away_team)
+        .join(Fixture, PredictionMarket.fixture_id == Fixture.id)
+        .join(Competition, Fixture.competition_id == Competition.id)
+        .join(home_team, Fixture.home_team_id == home_team.id)
+        .join(away_team, Fixture.away_team_id == away_team.id)
+        .filter(Competition.sport == "FOOTBALL")
+        .filter(Competition.code.notlike("APIF-%"))
+        .filter(Competition.code.notlike("TSD-%"))
+        .filter(PredictionMarket.probability >= minimum_probability)
+        .filter(PredictionMarket.fair_odds >= minimum_fair_odds)
+        .filter(PredictionMarket.fair_odds <= maximum_fair_odds)
+    )
+
+    if upcoming_only:
+        query = query.filter(Fixture.kickoff_time >= now)
+
+    parsed_date_from = parse_public_market_date(date_from)
+    parsed_date_to = parse_public_market_date(date_to, end_of_day=True)
+
+    if date:
+        parsed_date_from = parse_public_market_date(date)
+        parsed_date_to = parse_public_market_date(date, end_of_day=True)
+
+    if parsed_date_from:
+        query = query.filter(Fixture.kickoff_time >= parsed_date_from)
+
+    if parsed_date_to:
+        query = query.filter(Fixture.kickoff_time <= parsed_date_to)
+
+    if days_ahead:
+        query = query.filter(Fixture.kickoff_time <= now + timedelta(days=days_ahead))
+
+    if market_type:
+        query = query.filter(PredictionMarket.market_type == market_type)
+
+    if selection:
+        query = query.filter(PredictionMarket.selection == selection)
+
+    if line is not None:
+        query = query.filter(PredictionMarket.line == line)
+
+    if search:
+        like = f"%{search}%"
+        query = query.filter(
+            (Competition.name.ilike(like))
+            | (Competition.code.ilike(like))
+            | (home_team.name.ilike(like))
+            | (away_team.name.ilike(like))
+            | (PredictionMarket.market_type.ilike(like))
+            | (PredictionMarket.selection.ilike(like))
+        )
+
+    rows = (
+        query.order_by(
+            Fixture.kickoff_time.asc(),
+            PredictionMarket.confidence.desc(),
+            PredictionMarket.probability.desc(),
+        )
+        .limit(limit)
+        .all()
+    )
+
+    markets = []
+
+    for market, fixture, competition, home, away in rows:
+        probability = round(float(market.probability or 0), 2)
+        confidence = round(float(market.confidence or 0), 2)
+        fair_odds = round(float(market.fair_odds or 0), 2)
+
+        markets.append(
+            {
+                "market_id": market.id,
+                "fixture_id": fixture.id,
+                "competition_id": competition.id,
+                "competition_name": competition.name,
+                "competition_status": "PUBLIC",
+                "competition_status_message": "",
+                "home_team": home.name,
+                "away_team": away.name,
+                "kickoff_time": fixture_kickoff_iso(fixture.kickoff_time),
+                "status": fixture.status,
+                "market_type": market.market_type,
+                "selection": market.selection,
+                "line": market.line,
+                "probability": probability,
+                "fair_odds": fair_odds,
+                "confidence": confidence,
+                "market_confidence": confidence,
+                "fixture_result": None,
+                "quality_gate": "MARKET_BOARD",
+                "data_quality": "PUBLIC_MARKET",
+                "score": round((probability + confidence) / 2, 2),
+                "grade": public_market_grade(probability, confidence),
+            }
+        )
+
+    return {
+        "count": len(markets),
+        "markets": markets,
     }
 
 @router.get("/fixture/{fixture_id}")
