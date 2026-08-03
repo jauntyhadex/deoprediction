@@ -217,7 +217,7 @@ function marketCard(market) {
       <p class="muted">${display(market.competition_name)} - ${localTime(market.kickoff_time)}</p>
 
       <div class="pick-main">
-        <p class="pick-label">Official Pick</p>
+        <p class="pick-label">Market Probability</p>
         <h2>${display(market.market_type)}: ${display(market.selection)} ${lineValue(market.line)}</h2>
       </div>
 
@@ -618,13 +618,13 @@ async function loadMarkets() {
   }
 
   try {
-    const data = await fetchJson(`${API}/prediction-picks/markets/top?${params.toString()}`);
+    const data = await fetchJson(`${API}/prediction-picks/markets/public?${params.toString()}`);
     const markets = clientSideSearchItems(sortByKickoff(data.markets || []).filter(isPublicOfficialMarket), search);
 
     renderCards(
       "markets",
       markets,
-      "No official markets found for this date and filter.",
+      "No market probabilities found for this date and filter.",
       marketCard
     );
   } catch (error) {
@@ -1015,7 +1015,7 @@ async function fetchAccumulatorMarkets(params, group) {
   const requests = marketTypes.map((marketType) => {
     const nextParams = new URLSearchParams(params);
     nextParams.set("market_type", marketType);
-    return fetchJson(`${API}/prediction-picks/markets/top?${nextParams.toString()}`);
+    return fetchJson(`${API}/prediction-picks/markets/public?${nextParams.toString()}`);
   });
 
   const responses = await Promise.all(requests);
