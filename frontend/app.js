@@ -480,7 +480,7 @@ function fixtureMarketCard(market) {
       </div>
 
       <div class="pick-main">
-        <p class="pick-label">Official Pick</p>
+        <p class="pick-label">Market Probability</p>
         <h2>${display(market.selection)} ${lineValue(market.line)}</h2>
       </div>
 
@@ -619,7 +619,7 @@ async function loadMarkets() {
 
   try {
     const data = await fetchJson(`${API}/prediction-picks/markets/public?${params.toString()}`);
-    const markets = clientSideSearchItems(sortByKickoff(data.markets || []).filter(isPublicOfficialMarket), search);
+    const markets = clientSideSearchItems(sortByKickoff(data.markets || []), search);
 
     renderCards(
       "markets",

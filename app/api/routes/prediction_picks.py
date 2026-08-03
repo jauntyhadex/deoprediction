@@ -1,5 +1,5 @@
-import random
 from datetime import datetime, timezone, timedelta
+import random
 from sqlalchemy import or_
 from app.models.team import Team
 from app.models.prediction_market import PredictionMarket
