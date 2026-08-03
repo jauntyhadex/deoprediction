@@ -1209,6 +1209,89 @@ def accumulator_score_candidate(candidate: dict, desired_odds: float) -> float:
     return odds_distance - quality_bonus
 
 
+
+# ACCUMULATOR_PRACTICAL_FILTERS_START
+def accumulator_practical_line_number(line, selection: str = ""):
+    candidates = [line]
+
+    if selection:
+        candidates.extend(str(selection).replace("_", " ").split())
+
+    for candidate in candidates:
+        try:
+            return abs(float(candidate))
+        except (TypeError, ValueError):
+            continue
+
+    return None
+
+
+def accumulator_market_shape(market: dict) -> tuple:
+    return (
+        str(market.get("market_type") or "").upper(),
+        str(market.get("selection") or "").upper(),
+        str(market.get("line") or ""),
+    )
+
+
+def accumulator_is_practical_default_market(market: dict, target_odds: float) -> bool:
+    market_type = str(market.get("market_type") or "").upper()
+    selection = str(market.get("selection") or "").upper()
+    line_number = accumulator_practical_line_number(market.get("line"), selection)
+
+    allowed = {
+        "MATCH_RESULT",
+        "BTTS",
+        "TOTAL_GOALS",
+        "HOME_TEAM_TOTAL",
+        "AWAY_TEAM_TOTAL",
+        "DRAW_NO_BET",
+        "CLEAN_SHEET",
+        "WIN_TO_NIL",
+        "ASIAN_HANDICAP",
+    }
+
+    if market_type not in allowed:
+        return False
+
+    # Do not build public accumulator slips from scoreline lotteries.
+    if market_type == "CORRECT_SCORE":
+        return False
+
+    # No fake safe filler.
+    if market_type == "TOTAL_GOALS":
+        if selection == "OVER" and line_number is not None and line_number <= 0.5:
+            return False
+        if selection == "UNDER" and line_number is not None and line_number >= 4.5:
+            return False
+
+    if market_type in {"HOME_TEAM_TOTAL", "AWAY_TEAM_TOTAL"}:
+        if selection == "OVER" and line_number is not None and line_number <= 0.5:
+            return False
+        if selection == "UNDER" and line_number is not None and line_number >= 2.5:
+            return False
+
+    # No huge handicap safety cushions.
+    if market_type == "ASIAN_HANDICAP":
+        if line_number is not None and line_number >= 2.0:
+            return False
+
+    # High target accumulators need stronger markets, not low-risk filler.
+    if target_odds >= 5000 and market_type in {"DRAW_NO_BET"}:
+        return False
+
+    return True
+
+
+def accumulator_max_same_market_type(target_odds: float) -> int:
+    if target_odds >= 5000:
+        return 2
+    if target_odds >= 500:
+        return 2
+    return 2
+# ACCUMULATOR_PRACTICAL_FILTERS_END
+
+
 @router.get("/accumulators/target")
 def get_target_odds_accumulators(
     count: int = Query(default=100, ge=1, le=5000),
@@ -1305,6 +1388,8 @@ def get_target_odds_accumulators(
             }
         )
 
+    pool = [market for market in pool if accumulator_is_practical_default_market(market, target_odds)]
+
     if len(pool) < min_legs:
         return {
             "count": 0,
@@ -1329,6 +1414,9 @@ def get_target_odds_accumulators(
         selected = []
         used_fixtures = set()
         competition_counts = {}
+        market_type_counts = {}
+        market_shape_counts = {}
+        max_same_market_type = accumulator_max_same_market_type(target_odds)
         total_odds = 1.0
 
         while len(selected) < max_legs:
@@ -1350,6 +1438,15 @@ def get_target_odds_accumulators(
 
                 competition_name = market["competition_name"]
                 if competition_counts.get(competition_name, 0) >= max_same_competition:
+                    continue
+
+                market_type = str(market.get("market_type") or "").upper()
+                market_shape = accumulator_market_shape(market)
+
+                if market_type_counts.get(market_type, 0) >= max_same_market_type:
+                    continue
+
+                if market_shape_counts.get(market_shape, 0) >= 1:
                     continue
 
                 market_odds = accumulator_float(market["fair_odds"], 1.0)
@@ -1375,6 +1472,10 @@ def get_target_odds_accumulators(
             selected.append(chosen)
             used_fixtures.add(chosen["fixture_id"])
             competition_counts[chosen["competition_name"]] = competition_counts.get(chosen["competition_name"], 0) + 1
+            chosen_market_type = str(chosen.get("market_type") or "").upper()
+            chosen_market_shape = accumulator_market_shape(chosen)
+            market_type_counts[chosen_market_type] = market_type_counts.get(chosen_market_type, 0) + 1
+            market_shape_counts[chosen_market_shape] = market_shape_counts.get(chosen_market_shape, 0) + 1
             total_odds *= accumulator_float(chosen["fair_odds"], 1.0)
 
             if len(selected) >= min_legs and target_odds <= total_odds <= upper_target:
