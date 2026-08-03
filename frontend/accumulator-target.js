@@ -119,7 +119,7 @@
       <article class="card detail-card">
         <h3>Building target odds accumulators...</h3>
         <p>Target: <strong>${safe(targetOdds)}</strong></p>
-        <p>Minimum leg odds required: <strong>${safe(minFairOdds)}</strong></p>
+        <p>Minimum realistic leg odds required: <strong>${safe(minFairOdds)}</strong></p>
       </article>
     `;
 
@@ -140,7 +140,7 @@
           <p>Returned slips: <strong>${safe(data.count)}</strong></p>
           <p>Target odds: <strong>${safe(data.target_odds)}</strong></p>
           <p>Allowed range: <strong>${safe(data.minimum_total_odds)}</strong> - <strong>${safe(data.maximum_total_odds)}</strong></p>
-          <p>Minimum leg odds used: <strong>${safe(minFairOdds)}</strong></p>
+          <p>Minimum realistic leg odds used: <strong>${safe(minFairOdds)}</strong></p>
           <p>Market pool: <strong>${safe(data.pool_size)}</strong></p>
         </article>
 
@@ -154,7 +154,7 @@
                 </div>
 
                 <div class="pick-main">
-                  <p class="pick-label">Total Fair Odds</p>
+                  <p class="pick-label">Estimated Market Odds</p>
                   <h2>${safe(slip.total_fair_odds)}</h2>
                 </div>
 
@@ -170,7 +170,7 @@
                         <strong>Leg ${index + 1}: ${safe(leg.home_team)} vs ${safe(leg.away_team)}</strong>
                         <p class="muted">${safe(leg.competition_name)} - ${localKickoff(leg.kickoff_time)}</p>
                         <p>${safe(leg.market_type)}: <strong>${safe(leg.selection)}${lineText(leg.line)}</strong></p>
-                        <p>Fair odds: <strong>${safe(leg.fair_odds)}</strong> - Probability: <strong>${safe(leg.probability)}%</strong></p>
+                        <p>Estimated market odds: <strong>${safe(leg.fair_odds)}</strong> - Probability: <strong>${safe(leg.probability)}%</strong></p>
                       </div>
                     `).join("")}
                   </div>

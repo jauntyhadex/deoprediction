@@ -824,6 +824,7 @@ def get_bulk_accumulators(
                 "rank": len(accumulators) + 1,
                 "legs_count": len(selected),
                 "total_fair_odds": round(total_odds, 2),
+                "total_estimated_market_odds": round(total_odds, 2),
                 "combined_probability": round(combined_probability * 100.0, 4),
                 "average_confidence": round(average_confidence, 2),
                 "grade": "A" if average_confidence >= 70 else "B",
@@ -1018,6 +1019,177 @@ def accumulator_slip_key(legs: list[dict]) -> tuple:
     return tuple(sorted(accumulator_market_key(leg) for leg in legs))
 
 
+
+# ACCUMULATOR_REALISTIC_ODDS_START
+def accumulator_clamp(value: float, low: float, high: float) -> float:
+    return max(low, min(high, value))
+
+
+def accumulator_line_number(line, selection: str = "") -> float | None:
+    candidates = [line]
+
+    if selection:
+        candidates.extend(str(selection).replace("_", " ").split())
+
+    for candidate in candidates:
+        try:
+            return abs(float(candidate))
+        except (TypeError, ValueError):
+            continue
+
+    return None
+
+
+def accumulator_required_leg_floor(target_odds: float, max_legs: int, minimum_fair_odds: float) -> float:
+    target = max(accumulator_float(target_odds, 2.0), 2.0)
+    legs = max(int(max_legs or 2), 2)
+    mathematical_floor = target ** (1.0 / legs)
+
+    # Small tolerance, but never allow silly 1.15 legs for high targets.
+    return round(max(accumulator_float(minimum_fair_odds, 1.05), mathematical_floor * 0.98), 2)
+
+
+def accumulator_estimated_market_odds(
+    market_type: str,
+    selection: str,
+    line,
+    probability: float,
+    model_fair_odds: float,
+) -> float:
+    mt = (market_type or "").upper()
+    sel = (selection or "").upper()
+    line_number = accumulator_line_number(line, selection)
+    base = accumulator_float(model_fair_odds, 0.0)
+
+    if base <= 1.0:
+        probability_value = accumulator_float(probability, 0.0)
+        base = 100.0 / probability_value if probability_value > 0 else 2.0
+
+    low, high = 1.2, 4.0
+
+    if mt == "MATCH_RESULT":
+        low, high = (2.8, 4.6) if sel == "DRAW" else (1.45, 4.5)
+
+    elif mt == "DOUBLE_CHANCE":
+        low, high = 1.12, 1.7
+
+    elif mt == "DRAW_NO_BET":
+        low, high = 1.25, 3.2
+
+    elif mt == "BTTS":
+        low, high = 1.5, 2.4
+
+    elif mt in {"FIRST_HALF_BTTS", "SECOND_HALF_BTTS"}:
+        low, high = (1.25, 1.75) if sel == "NO" else (2.8, 6.0)
+
+    elif mt in {"TOTAL_GOALS", "FIRST_HALF_TOTAL_GOALS", "SECOND_HALF_TOTAL_GOALS"}:
+        ln = line_number if line_number is not None else 2.5
+
+        if mt == "TOTAL_GOALS":
+            if ln <= 0.5:
+                low, high = 1.03, 1.25
+            elif ln <= 1.5:
+                low, high = 1.18, 1.7
+            elif ln <= 2.5:
+                low, high = 1.55, 2.4
+            elif ln <= 3.5:
+                low, high = 2.0, 3.6
+            else:
+                low, high = 3.0, 7.0
+        else:
+            if ln <= 0.5:
+                low, high = 1.3, 2.1
+            elif ln <= 1.5:
+                low, high = 1.9, 4.0
+            else:
+                low, high = 3.5, 9.0
+
+    elif mt in {"HOME_TEAM_TOTAL", "AWAY_TEAM_TOTAL"}:
+        ln = line_number if line_number is not None else 1.5
+
+        if ln <= 0.5:
+            low, high = 1.08, 1.55
+        elif ln <= 1.5:
+            low, high = 1.55, 3.2
+        else:
+            low, high = 2.6, 7.0
+
+    elif mt == "ASIAN_HANDICAP":
+        ln = line_number if line_number is not None else 0.5
+
+        if ln >= 2.5:
+            low, high = 1.08, 1.45
+        elif ln >= 1.5:
+            low, high = 1.18, 1.85
+        elif ln >= 0.5:
+            low, high = 1.55, 2.35
+        else:
+            low, high = 1.65, 2.25
+
+    elif mt in {"FIRST_HALF_RESULT", "SECOND_HALF_RESULT"}:
+        low, high = (2.0, 3.4) if sel == "DRAW" else (1.75, 4.8)
+
+    elif mt == "CLEAN_SHEET":
+        low, high = 1.75, 4.8
+
+    elif mt == "WIN_TO_NIL":
+        low, high = 2.5, 8.0
+
+    elif mt == "CORRECT_SCORE":
+        low, high = 6.0, 18.0
+
+    return round(accumulator_clamp(base, low, high), 2)
+
+
+def accumulator_market_is_practical(
+    market_type: str,
+    selection: str,
+    line,
+    estimated_market_odds: float,
+    required_leg_floor: float,
+    target_odds: float,
+) -> bool:
+    mt = (market_type or "").upper()
+    sel = (selection or "").upper()
+    line_number = accumulator_line_number(line, selection)
+
+    if estimated_market_odds < required_leg_floor:
+        return False
+
+    if mt == "CORRECT_SCORE":
+        return False
+
+    if accumulator_float(target_odds, 0.0) >= 5000 and mt == "DOUBLE_CHANCE":
+        return False
+
+    if mt in {"TOTAL_GOALS", "FIRST_HALF_TOTAL_GOALS", "SECOND_HALF_TOTAL_GOALS"}:
+        if line_number is not None:
+            if sel == "OVER" and line_number <= 0.5:
+                return False
+            if sel == "UNDER" and line_number >= 4.5:
+                return False
+            if mt != "TOTAL_GOALS" and sel == "UNDER" and line_number >= 2.5:
+                return False
+
+    if mt in {"HOME_TEAM_TOTAL", "AWAY_TEAM_TOTAL"}:
+        if line_number is not None:
+            if sel == "OVER" and line_number <= 0.5:
+                return False
+            if sel == "UNDER" and line_number >= 2.5:
+                return False
+
+    if mt in {"FIRST_HALF_BTTS", "SECOND_HALF_BTTS"} and sel == "NO":
+        if accumulator_float(target_odds, 0.0) >= 5000:
+            return False
+
+    if mt == "ASIAN_HANDICAP":
+        if line_number is not None and line_number >= 2.5:
+            return False
+
+    return True
+# ACCUMULATOR_REALISTIC_ODDS_END
+
+
 def accumulator_public_grade(probability: float, confidence: float) -> str:
     if probability >= 65 and confidence >= 60:
         return "A"
@@ -1059,6 +1231,7 @@ def get_target_odds_accumulators(
         )
 
     upper_target = target_odds * (1.0 + (max_overshoot_percent / 100.0))
+    required_leg_floor = accumulator_required_leg_floor(target_odds, max_legs, minimum_fair_odds)
 
     home_team = aliased(Team)
     away_team = aliased(Team)
@@ -1092,7 +1265,24 @@ def get_target_odds_accumulators(
     for market, fixture, competition, home, away in rows:
         probability = round(accumulator_float(market.probability), 2)
         confidence = round(accumulator_float(market.confidence), 2)
-        fair_odds = round(accumulator_float(market.fair_odds), 2)
+        model_fair_odds = round(accumulator_float(market.fair_odds), 2)
+        estimated_market_odds = accumulator_estimated_market_odds(
+            market.market_type,
+            market.selection,
+            market.line,
+            probability,
+            model_fair_odds,
+        )
+
+        if not accumulator_market_is_practical(
+            market.market_type,
+            market.selection,
+            market.line,
+            estimated_market_odds,
+            required_leg_floor,
+            target_odds,
+        ):
+            continue
 
         pool.append(
             {
@@ -1106,7 +1296,9 @@ def get_target_odds_accumulators(
                 "selection": market.selection,
                 "line": market.line,
                 "probability": probability,
-                "fair_odds": fair_odds,
+                "model_fair_odds": model_fair_odds,
+                "fair_odds": estimated_market_odds,
+                "estimated_market_odds": estimated_market_odds,
                 "confidence": confidence,
                 "market_confidence": confidence,
                 "grade": accumulator_public_grade(probability, confidence),
@@ -1120,6 +1312,7 @@ def get_target_odds_accumulators(
             "target_odds": target_odds,
             "minimum_total_odds": target_odds,
             "maximum_total_odds": round(upper_target, 2),
+            "required_leg_floor": round(required_leg_floor, 2),
             "pool_size": len(pool),
             "accumulators": [],
             "message": "Not enough football markets to build accumulators.",
@@ -1217,6 +1410,7 @@ def get_target_odds_accumulators(
                 "minimum_total_odds": round(target_odds, 2),
                 "maximum_total_odds": round(upper_target, 2),
                 "total_fair_odds": round(total_odds, 2),
+                "total_estimated_market_odds": round(total_odds, 2),
                 "combined_probability": round(combined_probability * 100.0, 6),
                 "average_confidence": round(average_confidence, 2),
                 "legs": selected,
@@ -1240,9 +1434,10 @@ def get_target_odds_accumulators(
         "target_odds": round(target_odds, 2),
         "minimum_total_odds": round(target_odds, 2),
         "maximum_total_odds": round(upper_target, 2),
+        "required_leg_floor": round(required_leg_floor, 2),
         "pool_size": len(pool),
         "accumulators": accumulators,
-        "message": "Target-odds football accumulators generated within the requested odds range.",
+        "message": "Target-odds football accumulators generated with realistic accumulator odds filters.",
     }
 
 
