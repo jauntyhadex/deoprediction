@@ -53,7 +53,6 @@ def dynamic_target(event: dict) -> dict | None:
     country = (
         event.get("strCountry")
         or event.get("strVenueCountry")
-        or event.get("strLeagueAlternate")
         or "Unknown"
     )
 
@@ -65,24 +64,11 @@ def dynamic_target(event: dict) -> dict | None:
     }
 
 
-def main() -> None:
+def import_all_days(start: date, end: date) -> dict:
     env = read_env()
     api_key = env.get("THESPORTSDB_API_KEY") or "123"
 
-    if len(sys.argv) < 2:
-        print("Usage:")
-        print("python -m app.scripts.import_thesportsdb_all_day_fixtures 2026-08-03 2026-08-06")
-        raise SystemExit(1)
-
-    start = parse_date(sys.argv[1])
-    end = parse_date(sys.argv[2]) if len(sys.argv) >= 3 else start
-
     cache = read_json(CACHE_PATH, {})
-
-    print("THESPORTSDB ALL FOOTBALL DAY IMPORT")
-    print(f"Date range: {start} to {end}")
-    print("Mode: import every Soccer event returned by provider.")
-    print("")
 
     db = SessionLocal()
 
@@ -93,6 +79,11 @@ def main() -> None:
         total_updated = 0
         total_skipped = 0
         fresh_requests = 0
+
+        print("THESPORTSDB ALL FOOTBALL DAY IMPORT")
+        print(f"Date range: {start} to {end}")
+        print("Mode: import every Soccer event returned by provider.")
+        print("")
 
         for current_day in date_range(start, end):
             day_text = str(current_day)
@@ -144,12 +135,6 @@ def main() -> None:
                 if updated:
                     day_updated += 1
 
-                print(
-                    f"  {event.get('strLeague')} | "
-                    f"{event.get('strHomeTeam')} vs {event.get('strAwayTeam')} | "
-                    f"inserted={inserted} | updated={updated}"
-                )
-
             db.commit()
 
             total_events += len(events)
@@ -159,7 +144,7 @@ def main() -> None:
             total_skipped += day_skipped
 
             print(
-                f"  summary: imported={day_imported} | "
+                f"  imported={day_imported} | "
                 f"inserted={day_inserted} | updated={day_updated} | skipped={day_skipped}"
             )
 
@@ -173,8 +158,29 @@ def main() -> None:
         print(f"Fresh requests used: {fresh_requests}")
         print(f"Cache saved to: {CACHE_PATH}")
 
+        return {
+            "provider_events": total_events,
+            "imported": total_imported,
+            "inserted": total_inserted,
+            "updated": total_updated,
+            "skipped": total_skipped,
+            "fresh_requests": fresh_requests,
+        }
+
     finally:
         db.close()
+
+
+def main() -> None:
+    if len(sys.argv) < 2:
+        print("Usage:")
+        print("python -m app.scripts.import_thesportsdb_all_day_fixtures 2026-08-03 2026-08-06")
+        raise SystemExit(1)
+
+    start = parse_date(sys.argv[1])
+    end = parse_date(sys.argv[2]) if len(sys.argv) >= 3 else start
+
+    import_all_days(start, end)
 
 
 if __name__ == "__main__":
