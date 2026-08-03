@@ -1282,3 +1282,90 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 });
 
+
+
+function accumulatorCard(accumulator) {
+  const legs = accumulator.legs || [];
+
+  return `
+    <article class="card accumulator-card">
+      <div class="row">
+        <h3>Accumulator #${display(accumulator.rank)}</h3>
+        <span class="badge">${display(accumulator.legs_count)} legs</span>
+      </div>
+
+      <div class="pick-main">
+        <p class="pick-label">Target Odds Accumulator</p>
+        <h2>${display(accumulator.total_fair_odds)} odds</h2>
+      </div>
+
+      <p>Target: <strong>${display(accumulator.target_odds)}</strong></p>
+      <p>Combined probability: <strong>${display(accumulator.combined_probability)}%</strong></p>
+      <p>Average confidence: <strong>${display(accumulator.average_confidence)}%</strong></p>
+
+      <details>
+        <summary>View legs</summary>
+        <div class="stack">
+          ${legs.map((leg) => `
+            <div class="mini-card">
+              <strong>${display(leg.home_team)} vs ${display(leg.away_team)}</strong>
+              <p class="muted">${display(leg.competition_name)} - ${localTime(leg.kickoff_time)}</p>
+              <p>${display(leg.market_type)}: <strong>${display(leg.selection)} ${lineValue(leg.line)}</strong></p>
+              <p>Odds: <strong>${display(leg.fair_odds)}</strong> - Probability: <strong>${display(leg.probability)}%</strong></p>
+            </div>
+          `).join("")}
+        </div>
+      </details>
+    </article>
+  `;
+}
+
+
+async function loadAccumulators() {
+  const count = document.getElementById("accumulator-count")?.value || "100";
+  const targetOdds = document.getElementById("accumulator-target-odds")?.value || "1000";
+  const minLegs = document.getElementById("accumulator-min-legs")?.value || "4";
+  const maxLegs = document.getElementById("accumulator-max-legs")?.value || "20";
+
+  const params = new URLSearchParams({
+    count,
+    target_odds: targetOdds,
+    min_legs: minLegs,
+    max_legs: maxLegs,
+    pool_limit: "2000",
+    days_ahead: "30",
+    minimum_probability: "1",
+    minimum_fair_odds: "1.2",
+    maximum_fair_odds: "100",
+  });
+
+  const container = document.getElementById("accumulators");
+
+  if (container) {
+    container.innerHTML = loadingCard("Building accumulators...");
+  }
+
+  try {
+    const data = await fetchJson(`${API}/prediction-picks/accumulators/target?${params.toString()}`);
+    const accumulators = data.accumulators || [];
+
+    if (!container) return;
+
+    container.innerHTML = `
+      <div class="summary-card">
+        <h3>Accumulator Results</h3>
+        <p>Requested: <strong>${display(data.requested)}</strong></p>
+        <p>Returned: <strong>${display(data.count)}</strong></p>
+        <p>Target odds: <strong>${display(data.target_odds)}</strong></p>
+        <p>Market pool: <strong>${display(data.pool_size)}</strong></p>
+        <p class="muted">${display(data.message)}</p>
+      </div>
+
+      ${accumulators.length
+        ? accumulators.map(accumulatorCard).join("")
+        : messageCard("No accumulators found for this target. Try fewer target odds or more max legs.")}
+    `;
+  } catch (error) {
+    renderError("accumulators", error);
+  }
+}
