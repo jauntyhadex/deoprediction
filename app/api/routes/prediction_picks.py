@@ -994,6 +994,7 @@ def get_public_football_markets(
 
 
 
+
 def accumulator_float(value, fallback=0.0) -> float:
     try:
         parsed = float(value)
@@ -1025,18 +1026,30 @@ def accumulator_public_grade(probability: float, confidence: float) -> str:
     return "C"
 
 
+def accumulator_score_candidate(candidate: dict, desired_odds: float) -> float:
+    odds = max(accumulator_float(candidate.get("fair_odds"), 1.01), 1.01)
+    probability = accumulator_float(candidate.get("probability"), 0.0)
+    confidence = accumulator_float(candidate.get("confidence"), 0.0)
+
+    odds_distance = abs(math.log(odds) - math.log(max(desired_odds, 1.01)))
+    quality_bonus = (probability / 100.0) + (confidence / 200.0)
+
+    return odds_distance - quality_bonus
+
+
 @router.get("/accumulators/target")
 def get_target_odds_accumulators(
     count: int = Query(default=100, ge=1, le=5000),
     target_odds: float = Query(default=1000.0, ge=2.0, le=1000000.0),
     min_legs: int = Query(default=4, ge=2, le=50),
     max_legs: int = Query(default=20, ge=2, le=50),
-    pool_limit: int = Query(default=2000, ge=50, le=5000),
+    pool_limit: int = Query(default=3000, ge=50, le=5000),
     days_ahead: int = Query(default=30, ge=1, le=365),
-    minimum_probability: float = Query(default=1.0, ge=0.0, le=100.0),
+    minimum_probability: float = Query(default=5.0, ge=0.0, le=100.0),
     minimum_fair_odds: float = Query(default=1.2, ge=1.0, le=1000.0),
     maximum_fair_odds: float = Query(default=100.0, ge=1.0, le=1000.0),
     max_same_competition: int = Query(default=6, ge=1, le=50),
+    max_overshoot_percent: float = Query(default=20.0, ge=0.0, le=500.0),
     db: Session = Depends(get_db),
 ):
     if min_legs > max_legs:
@@ -1044,6 +1057,8 @@ def get_target_odds_accumulators(
             status_code=400,
             detail="min_legs cannot be greater than max_legs.",
         )
+
+    upper_target = target_odds * (1.0 + (max_overshoot_percent / 100.0))
 
     home_team = aliased(Team)
     away_team = aliased(Team)
@@ -1065,8 +1080,8 @@ def get_target_odds_accumulators(
         .filter(PredictionMarket.fair_odds <= maximum_fair_odds)
         .order_by(
             Fixture.kickoff_time.asc(),
-            PredictionMarket.fair_odds.desc(),
             PredictionMarket.probability.desc(),
+            PredictionMarket.confidence.desc(),
         )
         .limit(pool_limit)
         .all()
@@ -1078,9 +1093,6 @@ def get_target_odds_accumulators(
         probability = round(accumulator_float(market.probability), 2)
         confidence = round(accumulator_float(market.confidence), 2)
         fair_odds = round(accumulator_float(market.fair_odds), 2)
-
-        if fair_odds < minimum_fair_odds:
-            continue
 
         pool.append(
             {
@@ -1106,37 +1118,18 @@ def get_target_odds_accumulators(
             "count": 0,
             "requested": count,
             "target_odds": target_odds,
+            "minimum_total_odds": target_odds,
+            "maximum_total_odds": round(upper_target, 2),
             "pool_size": len(pool),
             "accumulators": [],
             "message": "Not enough football markets to build accumulators.",
         }
 
-    # High target odds need bigger prices available in the sample.
-    if target_odds >= 5000:
-        working_pool = sorted(
-            pool,
-            key=lambda item: (
-                accumulator_float(item.get("fair_odds")),
-                accumulator_float(item.get("probability")),
-            ),
-            reverse=True,
-        )
-    else:
-        working_pool = sorted(
-            pool,
-            key=lambda item: (
-                accumulator_float(item.get("probability")),
-                accumulator_float(item.get("confidence")),
-                accumulator_float(item.get("fair_odds")),
-            ),
-            reverse=True,
-        )
-
     accumulators = []
     seen = set()
-    max_attempts = min(max(count * 120, 5000), 250000)
+    max_attempts = min(max(count * 200, 10000), 350000)
 
-    for attempt in range(max_attempts):
+    for _attempt in range(max_attempts):
         if len(accumulators) >= count:
             break
 
@@ -1145,38 +1138,59 @@ def get_target_odds_accumulators(
         competition_counts = {}
         total_odds = 1.0
 
-        if attempt % 5 == 0:
-            candidate_pool = working_pool[: min(len(working_pool), max(300, min(pool_limit, 1200)))]
-        else:
-            candidate_pool = working_pool[:]
+        while len(selected) < max_legs:
+            remaining_to_target = target_odds / max(total_odds, 1.0)
+            remaining_slots = max(min_legs - len(selected), 1)
 
-        random.shuffle(candidate_pool)
+            if len(selected) >= min_legs:
+                remaining_slots = max(max_legs - len(selected), 1)
 
-        for market in candidate_pool:
-            fixture_id = market["fixture_id"]
+            desired_odds = remaining_to_target ** (1.0 / remaining_slots)
 
-            if fixture_id in used_fixtures:
-                continue
+            candidates = []
 
-            competition_name = market["competition_name"]
-            if competition_counts.get(competition_name, 0) >= max_same_competition:
-                continue
+            for market in pool:
+                fixture_id = market["fixture_id"]
 
-            selected.append(market)
-            used_fixtures.add(fixture_id)
-            competition_counts[competition_name] = competition_counts.get(competition_name, 0) + 1
-            total_odds *= accumulator_float(market["fair_odds"], 1.0)
+                if fixture_id in used_fixtures:
+                    continue
 
-            if len(selected) >= min_legs and total_odds >= target_odds:
+                competition_name = market["competition_name"]
+                if competition_counts.get(competition_name, 0) >= max_same_competition:
+                    continue
+
+                market_odds = accumulator_float(market["fair_odds"], 1.0)
+                projected_odds = total_odds * market_odds
+
+                # Before min legs, do not finish early.
+                if len(selected) + 1 < min_legs and projected_odds >= target_odds:
+                    continue
+
+                # Keep slips near the target. This prevents 1000 becoming 5000+.
+                if projected_odds > upper_target:
+                    continue
+
+                candidates.append(market)
+
+            if not candidates:
                 break
 
-            if len(selected) >= max_legs:
+            candidates.sort(key=lambda item: accumulator_score_candidate(item, desired_odds))
+            shortlist = candidates[: min(len(candidates), 35)]
+            chosen = random.choice(shortlist)
+
+            selected.append(chosen)
+            used_fixtures.add(chosen["fixture_id"])
+            competition_counts[chosen["competition_name"]] = competition_counts.get(chosen["competition_name"], 0) + 1
+            total_odds *= accumulator_float(chosen["fair_odds"], 1.0)
+
+            if len(selected) >= min_legs and target_odds <= total_odds <= upper_target:
                 break
 
         if len(selected) < min_legs:
             continue
 
-        if total_odds < target_odds:
+        if not (target_odds <= total_odds <= upper_target):
             continue
 
         slip_key = accumulator_slip_key(selected)
@@ -1200,6 +1214,8 @@ def get_target_odds_accumulators(
                 "rank": len(accumulators) + 1,
                 "legs_count": len(selected),
                 "target_odds": round(target_odds, 2),
+                "minimum_total_odds": round(target_odds, 2),
+                "maximum_total_odds": round(upper_target, 2),
                 "total_fair_odds": round(total_odds, 2),
                 "combined_probability": round(combined_probability * 100.0, 6),
                 "average_confidence": round(average_confidence, 2),
@@ -1211,6 +1227,7 @@ def get_target_odds_accumulators(
         key=lambda item: (
             abs(item["total_fair_odds"] - target_odds),
             -item["average_confidence"],
+            item["legs_count"],
         )
     )
 
@@ -1220,11 +1237,14 @@ def get_target_odds_accumulators(
     return {
         "count": len(accumulators),
         "requested": count,
-        "target_odds": target_odds,
+        "target_odds": round(target_odds, 2),
+        "minimum_total_odds": round(target_odds, 2),
+        "maximum_total_odds": round(upper_target, 2),
         "pool_size": len(pool),
         "accumulators": accumulators,
-        "message": "Target-odds football accumulators generated.",
+        "message": "Target-odds football accumulators generated within the requested odds range.",
     }
+
 
 @router.get("/fixture/{fixture_id}")
 def get_fixture_prediction_picks(
