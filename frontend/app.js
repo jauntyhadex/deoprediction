@@ -767,7 +767,28 @@ function supportLegMarkets(markets) {
     .slice(0, 10);
 }
 
-function builderComboCard() { return loadTargetAccumulators(); }
+function builderComboCard(title, note, legs) {
+  const combinedOdds = comboOdds(legs);
+  const legHtml = legs.map((leg, index) => `
+    <div class="builder-leg">
+      <p><strong>Leg ${index + 1}:</strong> ${marketLegLabel(leg)}</p>
+      <p>${display(leg.home_team)} vs ${display(leg.away_team)} - ${localTime(leg.kickoff_time)}</p>
+      <p>Probability: <strong>${display(leg.probability)}%</strong> - Fair odds: <strong>${display(leg.fair_odds)}</strong> - Grade: <strong>${display(leg.grade)}</strong></p>
+      ${oddsWarning(leg.fair_odds)}
+      
+      ${reliabilityWarning(leg.competition_status, leg.competition_status_message)}
+    </div>
+  `).join("");
+
+  return `
+    <article class="card detail-card">
+      <h3>${display(title)}</h3>
+      <p class="muted">${display(note)}</p>
+      <p>Estimated combined fair odds: <strong>${combinedOdds.toFixed(2)}</strong></p>
+      ${legHtml}
+    </article>
+  `;
+}
 
 function buildBetBuilderCombos(markets) {
   const topValue = topValueMarkets(markets);
@@ -888,7 +909,31 @@ function clearAccumulatorDate() {
   loadAccumulator();
 }
 
-function accumulatorRiskText() { return loadTargetAccumulators(); }
+function accumulatorRiskText(targetOdds) {
+  const target = Number(targetOdds);
+
+  if (target >= 20000) {
+    return "Maximum extreme risk. This is a long-shot slip and is very unlikely to land.";
+  }
+
+  if (target >= 10000) {
+    return "Extreme risk. This kind of slip is very unlikely to land and should only be viewed as a long-shot idea.";
+  }
+
+  if (target >= 5000) {
+    return "Extreme risk. Many legs must land together.";
+  }
+
+  if (target >= 2000) {
+    return "Very high risk. Many things must go right for this to land.";
+  }
+
+  if (target >= 500) {
+    return "High risk. This needs many correct legs.";
+  }
+
+  return "High risk. This is still an accumulator, not a safe pick.";
+}
 
 function accumulatorCombinedOdds(legs) {
   return legs.reduce((total, leg) => total * Number(leg.fair_odds || 1), 1);
@@ -1110,7 +1155,74 @@ function accumulatorLegCard(leg, index) {
   `;
 }
 
-async function loadAccumulator() { return loadTargetAccumulators(); }
+async function loadAccumulator() {
+  setLoading("accumulator-results", "Building accumulator slip...");
+
+  const targetOdds = document.getElementById("accumulator-target").value;
+  const mode = document.getElementById("accumulator-mode").value;
+  const quality = document.getElementById("accumulator-quality").value;
+  const maxLegs = document.getElementById("accumulator-max-legs").value;
+  const marketGroup = document.getElementById("accumulator-market-group").value;
+  const accumulatorCompetitionId = document.getElementById("accumulator-competition")?.value || "";
+  const selectedDate = document.getElementById("accumulator-date").value;
+
+  updateDateLabel("accumulator-date-label", selectedDate);
+
+  const params = new URLSearchParams({
+    limit: "100",
+    upcoming_only: "true",
+    one_per_fixture: mode === "safer" ? "true" : "false",
+    minimum_fair_odds: "1.01",
+    maximum_fair_odds: "10.00",
+    minimum_probability: "1",
+    minimum_market_confidence: "0",
+  });
+
+  if (accumulatorCompetitionId) params.set("competition_id", accumulatorCompetitionId);
+
+  const accumulatorDateRange = dateRangeParams(selectedDate);
+  if (accumulatorDateRange) {
+    params.set("date_from", accumulatorDateRange.date_from);
+    params.set("date_to", accumulatorDateRange.date_to);
+    params.set("upcoming_only", "false");
+  }
+
+  try {
+    const markets = await fetchAccumulatorMarkets(params, marketGroup);
+    const legs = chooseAccumulatorLegs(markets, targetOdds, mode, marketGroup, quality, maxLegs);
+    const combinedOdds = accumulatorCombinedOdds(legs);
+    const competitionSelect = document.getElementById("accumulator-competition");
+    const competitionLabel = competitionSelect?.selectedOptions?.[0]?.textContent || "All competitions";
+    const reachedTarget = combinedOdds >= Number(targetOdds);
+
+    document.getElementById("accumulator-results").innerHTML = `
+      <article class="card detail-card">
+        <h3>Target ${display(targetOdds)} odds</h3>
+        <p>Estimated combined fair odds: <strong>${combinedOdds.toFixed(2)}</strong></p>
+        <p>Mode: <strong>${mode === "safer" ? "Safer - one leg per game" : "Aggressive - multiple legs per game"}</strong></p>
+        <p>Slip style: <strong>${display(accumulatorQualityRules(quality).label)}</strong></p>
+        <p>Competition: <strong>${display(competitionLabel)}</strong></p>
+        <p>Market group: <strong>${display(marketGroup.replaceAll("_", " "))}</strong></p>
+        <p>Legs selected: <strong>${legs.length}</strong> / max ${display(maxLegs)}</p>
+        <p class="${Number(targetOdds) >= 2000 ? "risk-warning" : "risk-caution"}">${display(accumulatorRiskText(targetOdds))}</p>
+        <p class="${reachedTarget ? "risk-good" : "risk-warning"}">
+          ${reachedTarget
+            ? "Target reached from current available markets."
+            : "Target not reached. Try Max 20/30 legs, Extreme slip, All competitions, or All market groups."}
+        </p>
+        <p class="muted">Football only now. Mixed football, basketball, tennis, and table tennis slips will come after those sports are added.</p>
+      </article>
+
+      ${legs.length > 0
+        ? legs.map(accumulatorLegCard).join("")
+        : messageCard(competitionLabel !== "All competitions"
+            ? `No accumulator legs found for ${competitionLabel}. This competition may have no upcoming fixtures or no eligible prediction markets in the current database.`
+            : "No accumulator legs found for this date.")}
+    `;
+  } catch (error) {
+    setError("accumulator-results", error.message);
+  }
+}
 
 async function loadCatalog() {
   setLoading("catalog", "Loading market catalog...");
@@ -1257,179 +1369,3 @@ async function loadAccumulators() {
     renderError("accumulators", error);
   }
 }
-
-
-function setAccumulatorTargetOdds(value) {
-  const input = document.getElementById("accumulator-target-odds");
-
-  if (input) {
-    input.value = value;
-  }
-}
-
-function accumulatorMinimumFairOdds(targetOdds) {
-  const target = Number(targetOdds || 1000);
-
-  if (target >= 20000) return 1.55;
-  if (target >= 10000) return 1.45;
-  if (target >= 5000) return 1.35;
-  if (target >= 1000) return 1.25;
-
-  return 1.2;
-}
-
-function renderTargetAccumulatorControls() {
-  const container = document.getElementById("accumulators");
-
-  if (!container) return;
-
-  let controls = document.getElementById("target-accumulator-controls");
-
-  if (!controls) {
-    controls = document.createElement("div");
-    controls.id = "target-accumulator-controls";
-    controls.className = "filters accumulator-controls";
-    container.parentElement.insertBefore(controls, container);
-  }
-
-  controls.innerHTML = `
-    <label>
-      Slips
-      <select id="accumulator-count">
-        <option value="20">20 slips</option>
-        <option value="100" selected>100 slips</option>
-        <option value="500">500 slips</option>
-        <option value="1000">1000 slips</option>
-        <option value="2000">2000 slips</option>
-      </select>
-    </label>
-
-    <label>
-      Target odds
-      <input id="accumulator-target-odds" type="number" min="2" max="1000000" value="1000">
-    </label>
-
-    <div class="quick-buttons">
-      <button type="button" onclick="setAccumulatorTargetOdds(500)">500</button>
-      <button type="button" onclick="setAccumulatorTargetOdds(1000)">1000</button>
-      <button type="button" onclick="setAccumulatorTargetOdds(5000)">5000</button>
-      <button type="button" onclick="setAccumulatorTargetOdds(10000)">10000</button>
-      <button type="button" onclick="setAccumulatorTargetOdds(20000)">20000</button>
-      <button type="button" onclick="setAccumulatorTargetOdds(30000)">30000</button>
-    </div>
-
-    <label>
-      Min legs
-      <input id="accumulator-min-legs" type="number" min="2" max="50" value="4">
-    </label>
-
-    <label>
-      Max legs
-      <input id="accumulator-max-legs" type="number" min="2" max="50" value="30">
-    </label>
-
-    <button type="button" onclick="loadTargetAccumulators()">Build accumulators</button>
-  `;
-}
-
-function accumulatorResultCard(accumulator) {
-  const legs = accumulator.legs || [];
-
-  return `
-    <article class="card accumulator-card">
-      <div class="row">
-        <h3>Accumulator #${display(accumulator.rank)}</h3>
-        <span class="badge">${display(accumulator.legs_count)} legs</span>
-      </div>
-
-      <div class="pick-main">
-        <p class="pick-label">Target Odds Accumulator</p>
-        <h2>${display(accumulator.total_fair_odds)} odds</h2>
-      </div>
-
-      <p>Target: <strong>${display(accumulator.target_odds)}</strong></p>
-      <p>Allowed range: <strong>${display(accumulator.minimum_total_odds)}</strong> to <strong>${display(accumulator.maximum_total_odds)}</strong></p>
-      <p>Combined probability: <strong>${display(accumulator.combined_probability)}%</strong></p>
-      <p>Average confidence: <strong>${display(accumulator.average_confidence)}%</strong></p>
-
-      <details>
-        <summary>View legs</summary>
-        <div class="stack">
-          ${legs.map((leg, index) => `
-            <div class="mini-card">
-              <strong>Leg ${index + 1}: ${display(leg.home_team)} vs ${display(leg.away_team)}</strong>
-              <p class="muted">${display(leg.competition_name)} - ${localTime(leg.kickoff_time)}</p>
-              <p>${display(leg.market_type)}: <strong>${display(leg.selection)} ${lineValue(leg.line)}</strong></p>
-              <p>Odds: <strong>${display(leg.fair_odds)}</strong> - Probability: <strong>${display(leg.probability)}%</strong></p>
-            </div>
-          `).join("")}
-        </div>
-      </details>
-    </article>
-  `;
-}
-
-async function loadTargetAccumulators() {
-  renderTargetAccumulatorControls();
-
-  const count = document.getElementById("accumulator-count")?.value || "100";
-  const targetOdds = document.getElementById("accumulator-target-odds")?.value || "1000";
-  const minLegs = document.getElementById("accumulator-min-legs")?.value || "4";
-  const maxLegs = document.getElementById("accumulator-max-legs")?.value || "30";
-  const minFairOdds = accumulatorMinimumFairOdds(targetOdds);
-
-  const params = new URLSearchParams({
-    count,
-    target_odds: targetOdds,
-    min_legs: minLegs,
-    max_legs: maxLegs,
-    pool_limit: "3000",
-    days_ahead: "30",
-    minimum_probability: "5",
-    minimum_fair_odds: String(minFairOdds),
-    maximum_fair_odds: "100",
-    max_overshoot_percent: "20",
-  });
-
-  const container = document.getElementById("accumulators");
-
-  if (container) {
-    container.innerHTML = loadingCard("Building target-odds accumulators...");
-  }
-
-  try {
-    const data = await fetchJson(`${API}/prediction-picks/accumulators/target?${params.toString()}`);
-    const accumulators = data.accumulators || [];
-
-    if (!container) return;
-
-    container.innerHTML = `
-      <div class="summary-card">
-        <h3>Accumulator Results</h3>
-        <p>Requested slips: <strong>${display(data.requested)}</strong></p>
-        <p>Returned slips: <strong>${display(data.count)}</strong></p>
-        <p>Target odds: <strong>${display(data.target_odds)}</strong></p>
-        <p>Allowed range: <strong>${display(data.minimum_total_odds)}</strong> to <strong>${display(data.maximum_total_odds)}</strong></p>
-        <p>Market pool: <strong>${display(data.pool_size)}</strong></p>
-        <p>Minimum leg odds used: <strong>${display(minFairOdds)}</strong></p>
-        <p class="muted">${display(data.message)}</p>
-      </div>
-
-      ${accumulators.length
-        ? accumulators.map(accumulatorResultCard).join("")
-        : messageCard("No accumulators found inside the target range. Increase max legs or reduce target odds.")}
-    `;
-  } catch (error) {
-    renderError("accumulators", error);
-  }
-}
-
-window.loadTargetAccumulators = loadTargetAccumulators;
-window.loadAccumulators = loadTargetAccumulators;
-window.loadAccumulator = loadTargetAccumulators;
-window.buildAccumulators = loadTargetAccumulators;
-window.buildAccumulator = loadTargetAccumulators;
-window.setAccumulatorTargetOdds = setAccumulatorTargetOdds;
-
-document.addEventListener("DOMContentLoaded", renderTargetAccumulatorControls);
-window.addEventListener("hashchange", renderTargetAccumulatorControls);
